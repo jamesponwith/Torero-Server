@@ -62,7 +62,6 @@ int main(int argc, char** argv) {
 
 	/* Make sure the user called our program correctly. */
 	if (argc != 3) {
-		// TODO: print a proper error message informing user of proper usage
 		cout << "INCORRECT USAGE!\n";
 		cout << "usage: [port to listen on]\n" 
 			 << "       [directory out of which to serve files]\n";
@@ -95,11 +94,14 @@ int main(int argc, char** argv) {
 void sendData(int socked_fd, const char *data, size_t data_length) {
 	// TODO: Wrap the following code in a loop so that it keeps sending until
 	// the data has been completely sent.
-	
-	int num_bytes_sent = send(socked_fd, data, data_length, 0);
-	if (num_bytes_sent == -1) {
-		std::error_code ec(errno, std::generic_category());
-		throw std::system_error(ec, "send failed");
+	int num_bytes_left = data_length;	
+	while (num_bytes_left < 0) {
+		int num_bytes_sent = send(socked_fd, data, data_length, 0);
+		if (num_bytes_sent == -1) {
+			std::error_code ec(errno, std::generic_category());
+			throw std::system_error(ec, "send failed");
+		}
+		num_bytes_left -= num_bytes_sent;
 	}
 }
 
