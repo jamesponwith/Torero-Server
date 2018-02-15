@@ -8,8 +8,10 @@
  *
  * 	TODO: update author info with names and USD email addresses
  *
- * Author 1:
- * Author 2:
+ * Author 1: Patrick Hall
+ * 			 patrickhall@sandeigo.edu
+ * Author 2: James Ponwith
+ * 			 jponwith@sandeiego.edu
  */
 
 // standard C libraries
@@ -62,6 +64,8 @@ int main(int argc, char** argv) {
 	if (argc != 3) {
 		// TODO: print a proper error message informing user of proper usage
 		cout << "INCORRECT USAGE!\n";
+		cout << "usage: -p [port to listen on]\n" 
+			 << "       -d [directory out of which to serve files]\n";
 		exit(1);
 	}
 
