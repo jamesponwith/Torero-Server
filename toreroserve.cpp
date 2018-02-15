@@ -64,8 +64,8 @@ int main(int argc, char** argv) {
 	if (argc != 3) {
 		// TODO: print a proper error message informing user of proper usage
 		cout << "INCORRECT USAGE!\n";
-		cout << "usage: -p [port to listen on]\n" 
-			 << "       -d [directory out of which to serve files]\n";
+		cout << "usage: [port to listen on]\n" 
+			 << "       [directory out of which to serve files]\n";
 		exit(1);
 	}
 
