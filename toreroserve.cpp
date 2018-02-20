@@ -41,11 +41,9 @@
 //#include <conditional_variables>
 
 // Un-comment the following lines if you plan on using Boost's Filesystem Library.
-/*
-#include <boost/filesystem.hpp>
-
-namespace fs = boost::filesystem;
-*/
+//#include <boost/filesystem.hpp>
+#include <regex>
+//namespace fs = boost::filesystem;
 
 using std::cout;
 using std::string;
@@ -139,8 +137,18 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
  */
 void handleClient(const int client_sock) {
 	// TODO: Receive the request from the client. You can use receiveData here.
+	char b[1024];
+	int client_request = receiveData(client_sock, b, sizeof(b));  
+	string buff = b;
+	cout << buff;
 	
 	// TODO: Parse the request to determine what response to generate. I
+	// GET /path/to/some/file
+	// Host: 123.some.ip
+	std::regex get("GET");
+	if (!regex_match(buff, get)) {
+		cout << "valid get request" << "\n";
+	}
 	// recommend using regular expressions (specifically C++'s std::regex) to
 	// determine if a request is properly formatted.
 	
