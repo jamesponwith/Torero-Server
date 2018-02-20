@@ -36,6 +36,10 @@
 #include <iostream>
 #include <system_error>
 
+#include <thread>
+#include <mutex>
+//#include <conditional_variables>
+
 // Un-comment the following lines if you plan on using Boost's Filesystem Library.
 /*
 #include <boost/filesystem.hpp>
