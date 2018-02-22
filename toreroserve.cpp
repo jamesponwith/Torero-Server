@@ -146,11 +146,11 @@ void handleClient(const int client_sock) {
 	string buff = b;
 
     cout << buff << endl;
-	if (is_valid_request(buff)) {
-		cout << "valid request" << endl;
+	if (!is_valid_request(buff)) {
+		cout << "invalid request" << endl;
 	}
 	else {
-		cout << "invalid request" << endl;
+		cout << "valid request" << endl;
 	}
 	
 	// TODO: Parse the request to determine what response to generate. I
@@ -169,7 +169,7 @@ void handleClient(const int client_sock) {
 
 bool is_valid_request(string buff) {
 
-	std::regex get("^GET.+");
+	std::regex get("GET /.+ HTTP/.*");
 	bool match = regex_search(buff, get);
 
 	cout << (match? "matched" : "not matched") << std::endl;
