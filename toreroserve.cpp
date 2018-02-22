@@ -145,6 +145,7 @@ void handleClient(const int client_sock) {
 	int client_request = receiveData(client_sock, b, sizeof(b));  
 	string buff = b;
 
+    cout << buff << endl;
 	if (is_valid_request(buff)) {
 		cout << "valid request" << endl;
 	}
@@ -172,6 +173,7 @@ bool is_valid_request(string buff) {
 	bool match = regex_search(buff, get);
 
 	cout << (match? "matched" : "not matched") << std::endl;
+    return match;
 }
 
 /**
