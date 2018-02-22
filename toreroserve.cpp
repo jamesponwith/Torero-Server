@@ -45,6 +45,7 @@ using std::cout;
 using std::string;
 using std::vector;
 using std::thread;
+using std::endl;
 
 // This will limit how many clients can be waiting for a connection.
 static const int BACKLOG = 10;
@@ -55,6 +56,9 @@ void acceptConnections(const int server_sock);
 void handleClient(const int client_sock);
 void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
+
+bool is_valid_request(string buff); 
+
 
 int main(int argc, char** argv) {
 
@@ -136,15 +140,18 @@ void handleClient(const int client_sock) {
 	char b[1024];
 	int client_request = receiveData(client_sock, b, sizeof(b));  
 	string buff = b;
-	cout << buff;
+
+	if (is_valid_request(buff)) {
+		cout << "valid request" << endl;
+	}
+	else {
+		cout << "invalid request" << endl;
+	}
 	
 	// TODO: Parse the request to determine what response to generate. I
 	// GET /path/to/some/file
 	// Host: 123.some.ip
-	std::regex get("GET");
-	if (!regex_match(buff, get)) {
-		cout << "valid get request" << "\n";
-	}
+
 	// recommend using regular expressions (specifically C++'s std::regex) to
 	// determine if a request is properly formatted.
 	
@@ -153,6 +160,14 @@ void handleClient(const int client_sock) {
 	// TODO: Send response to client.
 	
 	// TODO: Close connection with client.
+}
+
+bool is_valid_request(string buff) {
+
+	std::regex get("^GET.+");
+	bool match = regex_search(buff, get);
+
+	cout << (match? "matched" : "not matched") << std::endl;
 }
 
 /**
