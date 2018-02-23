@@ -140,12 +140,17 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
  * @param client_sock The client's socket file descriptor.
  */
 void handleClient(const int client_sock) {
-	// TODO: Receive the request from the client. You can use receiveData here.
-	char b[1024];
-	int client_request = receiveData(client_sock, b, sizeof(b));  
-	string buff = b;
+	// receive client data
+	char buff[1024];
+	int client_request = receiveData(client_sock, buff, sizeof(buff));  
+
+	if (client_request <= 0) {
+		cout << "no data received" << endl;
+	}
 
     cout << buff << endl;
+
+	// uses regex to  determine if valid GET request
 	if (!is_valid_request(buff)) {
 		cout << "invalid request" << endl;
 	}
@@ -154,26 +159,38 @@ void handleClient(const int client_sock) {
 	}
 	
 	// TODO: Parse the request to determine what response to generate. I
-	// GET /path/to/some/file
-	// Host: 123.some.ip
+	char tmp_buff[1024];
+	std::copy(buff, buff+1024, tmp_buff);
 
-	// recommend using regular expressions (specifically C++'s std::regex) to
-	// determine if a request is properly formatted.
+	char *cmd = std::strtok(tmp_buff, " ");
+	char *location = std::strtok(NULL, " ");
+	char *http_type = std::strtok(NULL, " ");
+
+	// convert to c-strings
+	string cmd_str(cmd);
+	string location_str(location);
+	string http_type_str(http_type);
+
+	//cout << "cmd: " << cmd << endl;
+	//cout << "location: " << location << endl;
+	//cout << "http_type: " << http_type << endl;
 	
 	// TODO: Generate appropriate response.
+	// I think we need to use the filesystem library
 	
 	// TODO: Send response to client.
+	// send the requested information
 	
 	// TODO: Close connection with client.
+	// woot woot
 }
 
 bool is_valid_request(string buff) {
-
 	std::regex get("GET /.+ HTTP/.*");
-	bool match = regex_search(buff, get);
-
-	cout << (match? "matched" : "not matched") << std::endl;
-    return match;
+		bool valid = regex_search(buff, get);
+		cout << (valid? "valid" : "invalid") << std::endl;
+    //return regex_search(buff, get);
+	return valid;
 }
 
 /**
