@@ -38,12 +38,15 @@
 
 #include <thread>
 #include <mutex>
+
 //#include <conditional_variables>
 
 // Un-comment the following lines if you plan on using Boost's Filesystem Library.
 //#include <boost/filesystem.hpp>
 #include <regex>
 //namespace fs = boost::filesystem;
+
+#define DEBUG 1
 
 using std::cout;
 using std::string;
@@ -141,28 +144,40 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
  */
 void handleClient(const int client_sock) {
 	// receive client data
-	char buff[1024];
-	int client_request = receiveData(client_sock, buff, sizeof(buff));  
-
+	char b[1024];
+				
+	int client_request = receiveData(client_sock, b, sizeof(b));  
 	if (client_request <= 0) {
 		cout << "no data received" << endl;
 	}
 
+	//create a new string buff for the data
+	string buff = b;
+
+	#ifdef DEBUG
     cout << buff << endl;
+	#endif
 
 	// uses regex to  determine if valid GET request
-	if (!is_valid_request(buff)) {
-		cout << "invalid request" << endl;
+	if (is_valid_request(buff)) {
+		cout << "valid request" << endl;
+		// TODO: Parse the request to determine what response to generate. I
+		// TODO: Generate appropriate response.
+		// I think we need to use the filesystem library
 	}
 	else {
-		cout << "valid request" << endl;
+		#ifdef DEBUG
+		cout << "invalid request" << endl;
+		#endif
+		return; // invalid request - we peacing out!
 	}
+		// TODO: Send response to client.
+		// send the requested information
 	
-	// TODO: Parse the request to determine what response to generate. I
-	char tmp_buff[1024];
-	std::copy(buff, buff+1024, tmp_buff);
+	//char tmp_buff[1024];
+	//std::copy(buff, buff+1024, b);
 
-	char *cmd = std::strtok(tmp_buff, " ");
+	char *cmd = std::strtok(b, " ");
 	char *location = std::strtok(NULL, " ");
 	char *http_type = std::strtok(NULL, " ");
 
@@ -171,15 +186,11 @@ void handleClient(const int client_sock) {
 	string location_str(location);
 	string http_type_str(http_type);
 
-	//cout << "cmd: " << cmd << endl;
+	//cout << "cmd: " << cmd_str << endl;
 	//cout << "location: " << location << endl;
 	//cout << "http_type: " << http_type << endl;
 	
-	// TODO: Generate appropriate response.
-	// I think we need to use the filesystem library
 	
-	// TODO: Send response to client.
-	// send the requested information
 	
 	// TODO: Close connection with client.
 	// woot woot
