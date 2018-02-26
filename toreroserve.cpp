@@ -152,28 +152,23 @@ void handleClient(const int client_sock) {
  * Generates appropriate response of the GET request
  */
 void generate_appropriate_response(const int client_sock, fs::path p) {
-    cout << p << "exists on server\n" << endl;
     if (fs::is_directory(p)) {
-        //cout << p << " is a directory\n";
         if (fs::path_traits::empty(p)) {
-            //cout << p << " is empty";
+			cout << "Directory is empty" << endl;
         }
-        /* check if contains index.html */
-		cout << "thing requested is a directory" << endl;
-		std::string html;
 
+        /* check if contains index.html */
 		fs::path tmp_path = p;
 		tmp_path /= "index.html";
-		cout << tmp_path << endl;
+		std::string html;
         if (fs::exists(tmp_path)) {
-			cout << "FS::EXISTS THE FILE EXISTS !!!!!!\n";
-            //send index.html 
+			html = tmp_path.string();
+			send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
         }
         else {
-            cout << "bout to go through director\r\n";
             html = generate_index_html(p);
+			send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
         }
-        send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
     }
     else if (fs::is_regular_file(p)) {
         // send 200 response
@@ -186,6 +181,7 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
         if (!in_file) {
             cout << "Unable to open file\r\n";
         }
+
         in_file.seekg(0, std::ios::end);
         std::streampos position = in_file.tellg();
         cout << "length: " << position << "\r\n";
@@ -208,7 +204,7 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
 std::string generate_index_html(fs::path dir) {
     std::vector<fs::directory_entry> list;
     std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
-    std::string ret_html("<html><head><title>Parent Directory</title></head><body>Files ");
+    std::string ret_html("<html><head><title>Parent Directory</title></head><body>Files in directory ");
     ret_html.append(dir.string());
     ret_html.append("<br>");
 
@@ -251,10 +247,13 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
     ret.append(extension.substr(1));
     ret.append("\r\n\r\n");
 
-    int msg_size = ret.length() + 2 + size;
+	int msg_size;
     if (size < 0) {
         msg_size = ret.length() + 2 + content.length();
     }
+	else {
+		msg_size = ret.length() + 2 + size;
+	}
 
     /* two extra buffers for c_stringy operations */
     char message[ret.length() + 1];
