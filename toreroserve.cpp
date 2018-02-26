@@ -74,7 +74,8 @@ fs::path get_path(char buff[1024], std::string http_type);
 void generate_appropriate_response(const int client_sock, fs::path p);
 void send_file_not_found(const int client_sock, std::string http_response);
 std::string date_to_string();
-void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content); 
+void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content);
+std::string generate_index_html(fs::path dir);
 
 int main(int argc, char** argv) {
 
@@ -121,9 +122,7 @@ void handleClient(const int client_sock) {
 
     cout << buff << endl;
 
-    // uses regex to  determine if valid GET request
     if (!is_valid_request(buff)) {
-        // I think we need to use the filesystem library
         send_bad_request(client_sock);
         close(client_sock);
         return; // invalid request - we peacing out!
@@ -133,32 +132,18 @@ void handleClient(const int client_sock) {
         //cout << "invalid request" << endl;
     }
 
-
-    // TODO: Parse the request to determine what response to generate. I
     std::string http_type = "";
     fs::path path_to_file = get_path(buff, http_type);
 
-    if(fs::exists(path_to_file)) {
-        generate_appropriate_response(client_sock, path_to_file);
-    }
-    else {
+    if(!fs::exists(path_to_file)) {
         send_file_not_found(client_sock, http_type);
         close(client_sock);
         return;
     }
 
-
-    // TODO: Generate appropriate response.
+    generate_appropriate_response(client_sock, path_to_file);
 
     // TODO: Send response to client.
-    // send the requested information
-
-    //char tmp_buff[1024];
-    //std::copy(buff, buff+1024, b);
-
-    //cout << "cmd: " << cmd_str << endl;
-    //cout << "location: " << location << endl;
-    //cout << "http_type: " << http_type << endl;
 
     // TODO: Close connection with client.
     // woot woot
@@ -167,19 +152,16 @@ void handleClient(const int client_sock) {
 void generate_appropriate_response(const int client_sock, fs::path p) {
     cout << p << "exists on server\n" << endl;
     if (fs::is_directory(p)) {
-        //does it contain index.html?
-        //if yes send http 200 response
-        //else generate html links to files indirectory
         cout << p << " is a directory\n";
         if (fs::path_traits::empty(p)) {
             cout << p << " is empty";
         }
-        for (auto& entry : boost::make_iterator_range(fs::directory_iterator(p), {})) {
-            cout << entry << "\r\n";
-        }
+        std::string html = generate_index_html(p);
+        cout << "bout to go through director\r\n";
+        send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
     }
     else if (fs::is_regular_file(p)) {
-        // send 200 response 
+        // send 200 response
         cout << p << " is a regular file" << file_size(p) << '\n';
         fs::path d(fs::extension(p));
         cout <<fs::file_size(p) << endl;
@@ -192,7 +174,7 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
         in_file.seekg(0, std::ios::end);
         std::streampos position = in_file.tellg();
         cout << "length: " << position << "\r\n";
-        in_file.seekg(0, std::ios::beg); 
+        in_file.seekg(0, std::ios::beg);
         std::vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
         int pass_pos = (int) position;
         in_file.close();
@@ -222,6 +204,10 @@ std::string generate_index_html(fs::path dir) {
     return ret_html;
 }
 
+
+/**
+ * Sends a http 200 OK response
+ */
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content) {
     //create 200 return message
     std::string ret("HTTP/1.1 200 OK\r\nDate: ");
@@ -254,7 +240,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
 
     char final_msg[msg_size];
     memcpy(final_msg, message, ret.length());
-    
+
     if (size < 0) {
         char content_msg[content.length() + 1];
         strcpy(content_msg, content.c_str());
@@ -314,6 +300,12 @@ fs::path get_path(char buff[1024], std::string http_type_param) {
     return p;
 }
 
+/**
+ * Checks to see if the incoming buffer is a valid get request
+ *
+ * @pram buff The incoming buffer
+ * @return true if valid, false if not
+ */
 bool is_valid_request(string buff) {
     std::regex get("GET /.+ HTTP/.*");
     cout << "BUFF: " << buff << std::endl;
@@ -324,7 +316,8 @@ bool is_valid_request(string buff) {
 
 
 /**
-*/
+ * Seng http 400 bad request response
+ */
 void send_bad_request(const int client_sock) {
     std::string ret("HTTP:/1.1 400 Bad Request\r\nConnection: close\r\nDate: ");
     ret.append(date_to_string());
@@ -335,6 +328,10 @@ void send_bad_request(const int client_sock) {
     sendData(client_sock, msg, sizeof(msg));
 }
 
+/**
+ * Converts time_t of current time to a std::string
+ * @return date_str the date string
+ */
 std::string date_to_string() {
     time_t curr_time = time(0);
     char get_data[80];
