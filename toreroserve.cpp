@@ -171,6 +171,9 @@ void handleClient(const int client_sock) {
 
 	// TODO: Parse the request to determine what response to generate. I
 	fs::path path_to_file = get_path(buff);
+	if (!fs::exists(path_to_file)) {
+		//404 error
+	}
 
 	// TODO: Generate appropriate response.
 
@@ -188,6 +191,9 @@ void handleClient(const int client_sock) {
 	// woot woot
 }
 
+/**
+ * Returns the boost::filesystem path to the specified path
+ */
 fs::path get_path(char buff[1024]) {
 	char *cmd = std::strtok(buff, " ");
 	char *location = std::strtok(NULL, " ");

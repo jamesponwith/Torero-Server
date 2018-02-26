@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-Wall -Wextra -g -O1 -std=c++11 -pthread
+CXXFLAGS=-Wall -Wextra -g -O1 -std=c++11 -pthread -lboost_system -lboost_filesystem
 
 TARGETS=toreroserve thread_example
 
