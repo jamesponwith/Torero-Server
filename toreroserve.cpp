@@ -6,8 +6,6 @@
  * 	1. The port number on which to bind and listen for connections
  * 	2. The directory out of which to serve files.
  *
- * 	TODO: update author info with names and USD email addresses
- *
  * Author 1: Patrick Hall
  * 			 patrickhall@sandeigo.edu
  * Author 2: James Ponwith
@@ -15,20 +13,20 @@
  */
 
 // standard C libraries
+#include <ctime>
 #include <cstdio>
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <cerrno>
-#include <ctime>
 
 // operating system specific libraries
+#include <unistd.h>
+#include <sys/uio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <unistd.h>
 
 // C++ standard libraries
 #include <vector>
@@ -37,16 +35,16 @@
 #include <iostream>
 #include <system_error>
 
-#include <thread>
 #include <mutex>
+#include <regex>
+#include <thread>
 
 //#include <conditional_variables>
 
-// Un-comment the following lines if you plan on using Boost's Filesystem Library.
+//Boost filesystem libraries
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <regex>
 namespace fs = boost::filesystem;
 
 #define DEBUG 1
@@ -62,20 +60,20 @@ static const int BACKLOG = 10;
 static const int BUFF_SIZE = 2048;
 
 // forward declarations
+void handleClient(const int client_sock);
 int createSocketAndListen(const int port_num);
 void acceptConnections(const int server_sock);
-void handleClient(const int client_sock);
-void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
+void sendData(int socked_fd, const char *data, size_t data_length);
 
+std::string date_to_string();
 bool is_valid_request(string buff);
 void send_bad_request(const int client_sock);
+std::string generate_index_html(fs::path dir);
 fs::path get_path(char buff[1024], std::string http_type);
 void generate_appropriate_response(const int client_sock, fs::path p);
 void send_file_not_found(const int client_sock, std::string http_response);
-std::string date_to_string();
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content);
-std::string generate_index_html(fs::path dir);
 
 int main(int argc, char** argv) {
 
@@ -102,7 +100,6 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-
 /**
  * Receives a request from a connected HTTP client and sends back the
  * appropriate response.
@@ -113,15 +110,15 @@ int main(int argc, char** argv) {
  * @param client_sock The client's socket file descriptor.
  */
 void handleClient(const int client_sock) {
-    // receive client data
+    /* receive client data */
     char buff[1024];
     int client_request = receiveData(client_sock, buff, sizeof(buff));
     if (client_request <= 0) {
         cout << "no data received" << endl;
     }
-
     cout << buff << endl;
 
+    /* check if valid request */
     if (!is_valid_request(buff)) {
         send_bad_request(client_sock);
         close(client_sock);
@@ -129,12 +126,13 @@ void handleClient(const int client_sock) {
     }
     else {
         cout << "valid request" << endl;
-        //cout << "invalid request" << endl;
     }
 
+    /* get path from request */
     std::string http_type = "";
     fs::path path_to_file = get_path(buff, http_type);
 
+    /* check if file exists */
     if(!fs::exists(path_to_file)) {
         send_file_not_found(client_sock, http_type);
         close(client_sock);
@@ -146,9 +144,12 @@ void handleClient(const int client_sock) {
     // TODO: Send response to client.
 
     // TODO: Close connection with client.
-    // woot woot
+    close(client_sock);
 }
 
+/**
+ * Generates appropriate response of the GET request
+ */
 void generate_appropriate_response(const int client_sock, fs::path p) {
     cout << p << "exists on server\n" << endl;
     if (fs::is_directory(p)) {
@@ -156,8 +157,14 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
         if (fs::path_traits::empty(p)) {
             cout << p << " is empty";
         }
-        std::string html = generate_index_html(p);
-        cout << "bout to go through director\r\n";
+        /* check if contains index.html */
+        if (fs::exists(p)) {
+            //send index.html 
+        }
+        else {
+            std::string html = generate_index_html(p);
+            cout << "bout to go through director\r\n";
+        }
         send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
     }
     else if (fs::is_regular_file(p)) {
@@ -185,6 +192,11 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
     }
 }
 
+/**
+ * Generates html code for the index.html fil
+ * @param boost::filesystem path for the specified directory
+ * @return html code in form of C++ string
+ */
 std::string generate_index_html(fs::path dir) {
     std::vector<fs::directory_entry> list;
     std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
@@ -200,6 +212,7 @@ std::string generate_index_html(fs::path dir) {
         next_link.append("</a><br>");
         ret_html.append(next_link);
     }
+
     ret_html.append("</body></html>");
     return ret_html;
 }
@@ -209,10 +222,10 @@ std::string generate_index_html(fs::path dir) {
  * Sends a http 200 OK response
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content) {
-    //create 200 return message
     std::string ret("HTTP/1.1 200 OK\r\nDate: ");
     cout << ext << "\r\n";
 
+    /* add date */
     ret.append(date_to_string());
     ret.append("\r\n");
     ret.append("Content-Length: ");
@@ -223,18 +236,19 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
         ret.append(boost::lexical_cast<std::string>(s.size()));
     }
     ret.append("\r\n");
+
+    /* add content type */
     ret.append("Content-Type: ");
     std::string extension(ext.string());
     ret.append(extension.substr(1));
     ret.append("\r\n\r\n");
 
-    // dunno how this works
-    // ////
     int msg_size = ret.length() + 2 + size;
     if (size < 0) {
         msg_size = ret.length() + 2 + content.length();
     }
 
+    /* two extra buffers for c_stringy operations */
     char message[ret.length() + 1];
     strcpy(message, ret.c_str());
 
@@ -247,6 +261,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
         memcpy((final_msg + ret.length()), content_msg, content.length());
         sendData(client_sock, final_msg, msg_size);
         cout << final_msg << "\r\n";
+        return;
     }
 
     char entity_body[s.size() + 1];
