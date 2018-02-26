@@ -44,6 +44,7 @@
 
 // Un-comment the following lines if you plan on using Boost's Filesystem Library.
 #include <boost/filesystem.hpp>
+#include <boost/range/iterator_range.hpp>
 #include <regex>
 namespace fs = boost::filesystem;
 
@@ -68,8 +69,10 @@ int receiveData(int socked_fd, char *dest, size_t buff_size);
 
 bool is_valid_request(string buff); 
 void send_bad_request(const int client_sock);
-fs::path get_path(char buff[1024]); 
-
+fs::path get_path(char buff[1024], std::string http_type); 
+int generate_appropriate_response(fs::path p); 
+void send_file_not_found(const int client_sock, std::string http_response); 
+std::string date_to_string(); 
 
 int main(int argc, char** argv) {
 
@@ -170,10 +173,16 @@ void handleClient(const int client_sock) {
 
 
 	// TODO: Parse the request to determine what response to generate. I
-	fs::path path_to_file = get_path(buff);
+	std::string http_type = "";
+	fs::path path_to_file = get_path(buff, http_type);
 	if (!fs::exists(path_to_file)) {
 		//404 error
 	}
+
+	if(generate_appropriate_response(path_to_file) == -1) {
+		send_file_not_found(client_sock, http_type); 	
+	}
+		;
 
 	// TODO: Generate appropriate response.
 
@@ -186,15 +195,55 @@ void handleClient(const int client_sock) {
 	//cout << "cmd: " << cmd_str << endl;
 	//cout << "location: " << location << endl;
 	//cout << "http_type: " << http_type << endl;
-	
+
 	// TODO: Close connection with client.
 	// woot woot
+}
+int generate_appropriate_response(fs::path p) {
+	if (fs::exists(p)) {
+		cout << p << "exists on server\n" << endl;
+		if (fs::is_directory(p)) {
+			cout << p << " is a directory\n";
+			if (fs::path_traits::empty(p)) {
+				cout << p << " is empty";
+			}
+			for (auto& entry : boost::make_iterator_range(fs::directory_iterator(p), {})) {
+				cout << entry << "\r\n";
+			}
+		}
+		if (fs::is_regular_file(p)) {
+			cout << p << " size is " << file_size(p) << '\n';
+		}
+		else {
+			cout << p << " exists, but is neither a regular file nor a directory\n";
+		}
+		return 0;
+	}
+	else {
+		cout << p << " does not exist\n";
+		return -1;
+	}
+}
+
+void send_file_not_found(const int client_sock, std::string http_type) {
+	std::string ret;
+	ret += http_type;
+	ret.append(" 404 File not found\r\nConnection: close\r\nDate: ");
+
+	ret.append(date_to_string());
+	ret.append("\r\n\r\n");
+	ret.append("<html><head><title>Page not found</title></head><body><404 not found></body></html>");
+
+	//copy to char array and sned it
+	char msg[ret.length() + 1];
+	strcpy(msg, ret.c_str());
+	sendData(client_sock, msg, sizeof(msg));
 }
 
 /**
  * Returns the boost::filesystem path to the specified path
  */
-fs::path get_path(char buff[1024]) {
+fs::path get_path(char buff[1024], std::string http_type_param) {
 	char *cmd = std::strtok(buff, " ");
 	char *location = std::strtok(NULL, " ");
 	char *http_type = std::strtok(NULL, " ");
@@ -202,6 +251,8 @@ fs::path get_path(char buff[1024]) {
 	string cmd_str(cmd);
 	string location_str(location);
 	string http_type_str(http_type);
+
+	http_type_param = http_type_str;
 
 	char search_buff[512];
 	std::string folder("WWW");
