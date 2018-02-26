@@ -38,6 +38,7 @@
 #include <mutex>
 #include <regex>
 #include <thread>
+#include <fstream>
 
 //#include <conditional_variables>
 
@@ -153,17 +154,24 @@ void handleClient(const int client_sock) {
 void generate_appropriate_response(const int client_sock, fs::path p) {
     cout << p << "exists on server\n" << endl;
     if (fs::is_directory(p)) {
-        cout << p << " is a directory\n";
+        //cout << p << " is a directory\n";
         if (fs::path_traits::empty(p)) {
-            cout << p << " is empty";
+            //cout << p << " is empty";
         }
         /* check if contains index.html */
-        if (fs::exists(p)) {
+		cout << "thing requested is a directory" << endl;
+		std::string html;
+
+		fs::path tmp_path = p;
+		tmp_path /= "index.html";
+		cout << tmp_path << endl;
+        if (fs::exists(tmp_path)) {
+			cout << "FS::EXISTS THE FILE EXISTS !!!!!!\n";
             //send index.html 
         }
         else {
-            std::string html = generate_index_html(p);
             cout << "bout to go through director\r\n";
+            html = generate_index_html(p);
         }
         send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
     }
@@ -173,8 +181,8 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
         fs::path d(fs::extension(p));
         cout <<fs::file_size(p) << endl;
 
-        std::ifstream in_file;
-        in_file.open(p.string(), std::ios::binary|std::ios::in);
+        std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
+        //in_file.open(p.string(), std::ios::binary|std::ios::in);
         if (!in_file) {
             cout << "Unable to open file\r\n";
         }
@@ -308,7 +316,7 @@ fs::path get_path(char buff[1024], std::string http_type_param) {
     folder += location_str;
     folder.copy(search_buff, BUFF_SIZE);
 
-    cout << "Before sending, send buff is: " << folder << std::endl;
+    //cout << "Before sending, send buff is: " << folder << endl;
 
     fs::path p(folder);
     cout << p;
@@ -323,9 +331,9 @@ fs::path get_path(char buff[1024], std::string http_type_param) {
  */
 bool is_valid_request(string buff) {
     std::regex get("GET /.+ HTTP/.*");
-    cout << "BUFF: " << buff << std::endl;
+    cout << "BUFF: " << buff << endl;
     bool valid = regex_search(buff, get);
-    cout << (valid? "valid" : "invalid") << std::endl;
+    cout << (valid? "valid" : "invalid") << endl;
     return valid;
 }
 
