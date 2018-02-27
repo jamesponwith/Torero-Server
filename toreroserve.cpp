@@ -117,16 +117,16 @@ void handleClient(const int client_sock) {
     if (client_request <= 0) {
         cout << "no data received" << endl;
     }
-    cout << buff << endl;
+    // cout << buff << endl;
 
     /* check if valid request */
     if (!is_valid_request(buff)) {
         send_bad_request(client_sock);
-        close(client_sock);
+        // close(client_sock);
         return; // invalid request - we peacing out!
     }
     else {
-        cout << "valid request" << endl;
+        // cout << "valid request" << endl;
     }
 
     /* get path from request */
@@ -136,7 +136,7 @@ void handleClient(const int client_sock) {
     /* check if file exists */
     if(!fs::exists(path_to_file)) {
         send_file_not_found(client_sock, http_type);
-        close(client_sock);
+        // close(client_sock);
         return;
     }
 
@@ -145,7 +145,7 @@ void handleClient(const int client_sock) {
     // TODO: Send response to client.
 
     // TODO: Close connection with client.
-    close(client_sock);
+    // close(client_sock);
 }
 
 /**
@@ -172,9 +172,9 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
     }
     else if (fs::is_regular_file(p)) {
         // send 200 response
-        cout << p << " is a regular file" << file_size(p) << '\n';
+        // cout << p << " is a regular file" << file_size(p) << '\n';
         fs::path d(fs::extension(p));
-        cout <<fs::file_size(p) << endl;
+        // cout <<fs::file_size(p) << endl;
 
         std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
         //in_file.open(p.string(), std::ios::binary|std::ios::in);
@@ -184,7 +184,7 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
 
         in_file.seekg(0, std::ios::end);
         std::streampos position = in_file.tellg();
-        cout << "length: " << position << "\r\n";
+        // cout << "length: " << position << "\r\n";
         in_file.seekg(0, std::ios::beg);
         std::vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
         int pass_pos = (int) position;
@@ -227,7 +227,7 @@ std::string generate_index_html(fs::path dir) {
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content) {
     std::string ret("HTTP/1.1 200 OK\r\nDate: ");
-    cout << ext << "\r\n";
+    //cout << ext << "\r\n";
 
     /* add date */
     ret.append(date_to_string());
@@ -266,16 +266,19 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
         char content_msg[content.length() + 1];
         strcpy(content_msg, content.c_str());
         memcpy((final_msg + ret.length()), content_msg, content.length());
+
+        cout << "200 MSG size < 0 " << final_msg << "\r\n";
         sendData(client_sock, final_msg, msg_size);
-        cout << final_msg << "\r\n";
         return;
     }
 
     char entity_body[s.size() + 1];
     std::copy(s.begin(), s.end(), entity_body);
     memcpy((final_msg + ret.length()), entity_body, s.size());
+    
+    cout << "200 MSG size > 0 " << final_msg << "\r\n";
     sendData(client_sock, final_msg, msg_size);
-    cout << final_msg << "\r\n";
+    // cout << final_msg << "\r\n";
 }
 
 /**
@@ -293,6 +296,7 @@ void send_file_not_found(const int client_sock, std::string http_type) {
     //copy to char array and sned it
     char msg[ret.length() + 1];
     strcpy(msg, ret.c_str());
+    cout << "FILE NOT FOUND ERROR " << msg << "\r\n";
     sendData(client_sock, msg, sizeof(msg));
 }
 
@@ -318,7 +322,7 @@ fs::path get_path(char buff[1024], std::string http_type_param) {
     //cout << "Before sending, send buff is: " << folder << endl;
 
     fs::path p(folder);
-    cout << p;
+    // cout << p;
     return p;
 }
 
@@ -330,10 +334,9 @@ fs::path get_path(char buff[1024], std::string http_type_param) {
  */
 bool is_valid_request(string buff) {
     std::regex get("GET /.+ HTTP/.*");
-    cout << "BUFF: " << buff << endl;
-    bool valid = regex_search(buff, get);
-    cout << (valid? "valid" : "invalid") << endl;
-    return valid;
+    // bool valid = regex_search(buff, get);
+    return regex_search(buff, get);
+    // return valid;
 }
 
 
@@ -347,6 +350,7 @@ void send_bad_request(const int client_sock) {
 
     char msg[ret.length() + 1];
     strcpy(msg, ret.c_str());
+    cout << "\tBAD REQUEST: " << msg << endl;
     sendData(client_sock, msg, sizeof(msg));
 }
 
@@ -504,7 +508,7 @@ void sendData(int socked_fd, const char *data, size_t data_length) {
     // TODO: Wrap the following code in a loop so that it keeps sending until
     // the data has been completely sent.
     int num_bytes_left = data_length;
-    while (num_bytes_left < 0) {
+    while (num_bytes_left > 0) {
         int num_bytes_sent = send(socked_fd, data, data_length, 0);
         if (num_bytes_sent == -1) {
             std::error_code ec(errno, std::generic_category());
