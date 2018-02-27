@@ -71,7 +71,7 @@ std::string date_to_string();
 bool is_valid_request(string buff);
 void send_bad_request(const int client_sock);
 std::string generate_index_html(fs::path dir);
-fs::path get_path(char buff[1024], std::string http_type);
+fs::path get_path(char buff[1024], std::string &http_type);
 void generate_appropriate_response(const int client_sock, fs::path p, std::string http_type);
 void send_file_not_found(const int client_sock, std::string http_response);
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type);
@@ -131,7 +131,7 @@ void handleClient(const int client_sock) {
 
     /* get path from request */
     std::string http_type = "";
-    fs::path path_to_file = get_path(buff, http_type);
+    fs::path path_to_file = get_path(buff, http_type); 
 
     /* check if file exists */
     if(!fs::exists(path_to_file)) {
@@ -285,6 +285,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
 void send_file_not_found(const int client_sock, std::string http_type) {
     std::string ret;
     ret += http_type;
+	cout << "HTTP TYPE IN FILE NOT FOUND :::::: " << http_type << endl << endl;
     ret.append(" 404 File not found\r\nConnection: close\r\nDate: ");
 
     ret.append(date_to_string());
@@ -301,7 +302,7 @@ void send_file_not_found(const int client_sock, std::string http_type) {
 /**
  * Returns the boost::filesystem path to the specified path
  */
-fs::path get_path(char buff[1024], std::string http_type_param) {
+fs::path get_path(char buff[1024], std::string &http_type_param) {
     char *cmd = std::strtok(buff, " ");
     char *location = std::strtok(NULL, " ");
     char *http_type = std::strtok(NULL, " ");
