@@ -72,9 +72,9 @@ bool is_valid_request(string buff);
 void send_bad_request(const int client_sock);
 std::string generate_index_html(fs::path dir);
 fs::path get_path(char buff[1024], std::string http_type);
-void generate_appropriate_response(const int client_sock, fs::path p);
+void generate_appropriate_response(const int client_sock, fs::path p, std::string http_type);
 void send_file_not_found(const int client_sock, std::string http_response);
-void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content);
+void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type);
 
 int main(int argc, char** argv) {
 
@@ -140,7 +140,7 @@ void handleClient(const int client_sock) {
         return;
     }
 
-    generate_appropriate_response(client_sock, path_to_file);
+    generate_appropriate_response(client_sock, path_to_file, http_type);
 
     // TODO: Send response to client.
 
@@ -151,30 +151,27 @@ void handleClient(const int client_sock) {
 /**
  * Generates appropriate response of the GET request
  */
-void generate_appropriate_response(const int client_sock, fs::path p) {
+void generate_appropriate_response(const int client_sock, fs::path p, std::string http_type) {
     if (fs::is_directory(p)) {
         if (fs::path_traits::empty(p)) {
 			cout << "Directory is empty" << endl;
         }
-
         /* check if contains index.html */
 		fs::path tmp_path = p;
 		tmp_path /= "index.html";
 		std::string html;
         if (fs::exists(tmp_path)) {
 			html = tmp_path.string();
-			send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
+            generate_appropriate_response(client_sock, tmp_path, http_type);
+			// send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
         }
         else {
             html = generate_index_html(p);
-			send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
+			send_http200_response(client_sock, -1, ".html", std::vector<char>(), html, http_type);
         }
     }
     else if (fs::is_regular_file(p)) {
-        // send 200 response
-        // cout << p << " is a regular file" << file_size(p) << '\n';
         fs::path d(fs::extension(p));
-        // cout <<fs::file_size(p) << endl;
 
         std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
         //in_file.open(p.string(), std::ios::binary|std::ios::in);
@@ -189,7 +186,7 @@ void generate_appropriate_response(const int client_sock, fs::path p) {
         std::vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
         int pass_pos = (int) position;
         in_file.close();
-        send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, std::string());
+        send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, std::string(), http_type);
     }
     else {
         cout << p << " exists, but is neither a regular file nor a directory\n";
@@ -225,7 +222,8 @@ std::string generate_index_html(fs::path dir) {
 /**
  * Sends a http 200 OK response
  */
-void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content) {
+void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type) {
+    cout << "HTTP TYPE: >>>>>>> " << http_type << endl << endl;
     std::string ret("HTTP/1.1 200 OK\r\nDate: ");
     //cout << ext << "\r\n";
 
