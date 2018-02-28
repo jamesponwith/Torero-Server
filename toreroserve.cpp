@@ -10,6 +10,23 @@
  * 			 patrickhall@sandeigo.edu
  * Author 2: James Ponwith
  * 			 jponwith@sandeiego.edu
+ *
+ *
+ * 	Testing list:
+ * 	TODO: Select thread
+ * 	TODO: Make thread receive http request
+ * 	Done: check if valid get request
+ * 		Yes case -- validates
+ * 		No case -- send 404 request
+ * 	TODO: Does file exist
+ * 		TODO: yes case
+ * 		TODO: no case
+ * 	TODO: check if file or dir
+ * 		TODO: file case
+ * 		TODO: does it contain index.html?
+ * 			TODO: if no, gnerate html links
+ * 	TODO: send http200 ok response
+ *
  */
 
 // standard C libraries
@@ -69,9 +86,10 @@ void sendData(int socked_fd, const char *data, size_t data_length);
 
 std::string date_to_string();
 bool is_valid_request(string buff);
-void send_bad_request(const int client_sock);
+void send_bad_request(const int client_sock, std::string html_type);
+//void send_bad_request(const int client_sock);
 std::string generate_index_html(fs::path dir);
-fs::path get_path(char buff[1024], std::string http_type);
+fs::path get_path(char buff[1024], std::string location_str); 
 void generate_appropriate_response(const int client_sock, fs::path p, std::string http_type);
 void send_file_not_found(const int client_sock, std::string http_response);
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type);
@@ -117,11 +135,20 @@ void handleClient(const int client_sock) {
     if (client_request <= 0) {
         cout << "no data received" << endl;
     }
-    // cout << buff << endl;
+
+    char *cmd = std::strtok(buff, " ");
+    char *location = std::strtok(NULL, " ");
+    char *http_type = std::strtok(NULL, " ");
+
+    std::string cmd_str(cmd);
+    std::string location_str(location);
+    std::string http_type_str(http_type);
+
+	cout << "HTTP_TYPE_STR <<>><<>> " << http_type_str << endl << endl;
 
     /* check if valid request */
-    if (!is_valid_request(buff)) {
-        send_bad_request(client_sock);
+    if (is_valid_request(buff)) {
+        send_bad_request(client_sock, http_type);
         // close(client_sock);
         return; // invalid request - we peacing out!
     }
@@ -130,8 +157,7 @@ void handleClient(const int client_sock) {
     }
 
     /* get path from request */
-    std::string http_type = "";
-    fs::path path_to_file = get_path(buff, http_type);
+    fs::path path_to_file = get_path(buff, location_str);
 
     /* check if file exists */
     if(!fs::exists(path_to_file)) {
@@ -224,8 +250,14 @@ std::string generate_index_html(fs::path dir) {
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type) {
     cout << "HTTP TYPE: >>>>>>> " << http_type << endl << endl;
-    std::string ret("HTTP/1.1 200 OK\r\nDate: ");
-    //cout << ext << "\r\n";
+
+	//std::string ret("HTTP/1.1 200 OK\r\nDate: ");
+	
+	std::string ret;
+	ret += http_type;
+	ret.append(" 200 OK\r\nDate: ");
+	
+	//cout << ext << "\r\n";
 
     /* add date */
     ret.append(date_to_string());
@@ -283,8 +315,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
  * Send 404 error html page
  */
 void send_file_not_found(const int client_sock, std::string http_type) {
-    std::string ret;
-    ret += http_type;
+    std::string ret(http_type);
     ret.append(" 404 File not found\r\nConnection: close\r\nDate: ");
 
     ret.append(date_to_string());
@@ -301,7 +332,8 @@ void send_file_not_found(const int client_sock, std::string http_type) {
 /**
  * Returns the boost::filesystem path to the specified path
  */
-fs::path get_path(char buff[1024], std::string http_type_param) {
+fs::path get_path(char buff[1024], std::string location_str) {
+	/*
     char *cmd = std::strtok(buff, " ");
     char *location = std::strtok(NULL, " ");
     char *http_type = std::strtok(NULL, " ");
@@ -309,8 +341,7 @@ fs::path get_path(char buff[1024], std::string http_type_param) {
     std::string cmd_str(cmd);
     std::string location_str(location);
     std::string http_type_str(http_type);
-
-    http_type_param = http_type_str;
+	*/
 
     char search_buff[512];
     std::string folder("WWW");
@@ -339,18 +370,38 @@ bool is_valid_request(string buff) {
 
 
 /**
- * Seng http 400 bad request response
+ * Send http 400 bad request response
  */
-void send_bad_request(const int client_sock) {
-    std::string ret("HTTP:/1.1 400 Bad Request\r\nConnection: close\r\nDate: ");
+void send_bad_request(const int client_sock, std::string http_type) {
+	std::string ret(http_type);
+	ret.append("400 Bad Request\r\nConnection: close\r\nDate: ");
+    //std::string ret("HTTP:/1.1 400 Bad Request\r\nConnection: close\r\nDate: ");
     ret.append(date_to_string());
     ret.append("\r\n");
 
     char msg[ret.length() + 1];
     strcpy(msg, ret.c_str());
-    cout << "\tBAD REQUEST: " << msg << endl;
+    cout << "BAD REQUEST: " << msg << endl;
     sendData(client_sock, msg, sizeof(msg));
 }
+
+/*
+void send_bad_request(const int client_sock, std::string html_type) {
+    std::string ret;
+    ret += http_type;
+    ret.append(" 404 File not found\r\nConnection: close\r\nDate: ");
+
+    ret.append(date_to_string());
+    ret.append("\r\n\r\n");
+    ret.append("<html><head><title>Page not found</title></head><body><404 not found></body></html>");
+
+    //copy to char array and sned it
+    char msg[ret.length() + 1];
+    strcpy(msg, ret.c_str());
+    cout << "FILE NOT FOUND ERROR " << msg << "\r\n";
+    sendData(client_sock, msg, sizeof(msg));
+}
+*/
 
 /**
  * Converts time_t of current time to a std::string
