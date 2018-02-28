@@ -84,15 +84,14 @@ void acceptConnections(const int server_sock);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
 void sendData(int socked_fd, const char *data, size_t data_length);
 
-std::string date_to_string();
+string date_to_string();
 bool is_valid_request(string buff);
-void send_bad_request(const int client_sock, std::string html_type);
-//void send_bad_request(const int client_sock);
-std::string generate_index_html(fs::path dir);
-fs::path get_path(char buff[1024], std::string location_str); 
-void generate_appropriate_response(const int client_sock, fs::path p, std::string http_type);
-void send_file_not_found(const int client_sock, std::string http_response);
-void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type);
+void send_bad_request(const int client_sock, string html_type);
+string generate_index_html(fs::path dir);
+fs::path get_path(char buff[1024], string location_str); 
+void generate_appropriate_response(const int client_sock, fs::path p, string http_type);
+void send_file_not_found(const int client_sock, string http_response);
+void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
 
 int main(int argc, char** argv) {
 
@@ -140,9 +139,9 @@ void handleClient(const int client_sock) {
     char *location = std::strtok(NULL, " ");
     char *http_type = std::strtok(NULL, " ");
 
-    std::string cmd_str(cmd);
-    std::string location_str(location);
-    std::string http_type_str(http_type);
+    string cmd_str(cmd);
+    string location_str(location);
+    string http_type_str(http_type);
 
 	cout << "HTTP_TYPE_STR <<>><<>> " << http_type_str << endl << endl;
 
@@ -177,7 +176,7 @@ void handleClient(const int client_sock) {
 /**
  * Generates appropriate response of the GET request
  */
-void generate_appropriate_response(const int client_sock, fs::path p, std::string http_type) {
+void generate_appropriate_response(const int client_sock, fs::path p, string http_type) {
     if (fs::is_directory(p)) {
         if (fs::path_traits::empty(p)) {
 			cout << "Directory is empty" << endl;
@@ -185,15 +184,15 @@ void generate_appropriate_response(const int client_sock, fs::path p, std::strin
         /* check if contains index.html */
 		fs::path tmp_path = p;
 		tmp_path /= "index.html";
-		std::string html;
+		string html;
         if (fs::exists(tmp_path)) {
 			html = tmp_path.string();
             generate_appropriate_response(client_sock, tmp_path, http_type);
-			// send_http200_response(client_sock, -1, ".html", std::vector<char>(), html);
+			// send_http200_response(client_sock, -1, ".html", vector<char>(), html);
         }
         else {
             html = generate_index_html(p);
-			send_http200_response(client_sock, -1, ".html", std::vector<char>(), html, http_type);
+			send_http200_response(client_sock, -1, ".html", vector<char>(), html, http_type);
         }
     }
     else if (fs::is_regular_file(p)) {
@@ -209,10 +208,10 @@ void generate_appropriate_response(const int client_sock, fs::path p, std::strin
         std::streampos position = in_file.tellg();
         // cout << "length: " << position << "\r\n";
         in_file.seekg(0, std::ios::beg);
-        std::vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+        vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
         int pass_pos = (int) position;
         in_file.close();
-        send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, std::string(), http_type);
+        send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
     }
     else {
         cout << p << " exists, but is neither a regular file nor a directory\n";
@@ -224,15 +223,15 @@ void generate_appropriate_response(const int client_sock, fs::path p, std::strin
  * @param boost::filesystem path for the specified directory
  * @return html code in form of C++ string
  */
-std::string generate_index_html(fs::path dir) {
-    std::vector<fs::directory_entry> list;
+string generate_index_html(fs::path dir) {
+    vector<fs::directory_entry> list;
     std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
-    std::string ret_html("<html><head><title>Parent Directory</title></head><body>Files in directory ");
+    string ret_html("<html><head><title>Parent Directory</title></head><body>Files in directory ");
     ret_html.append(dir.string());
     ret_html.append("<br>");
 
     for (fs::directory_entry d: list) {
-        std::string next_link("<a href=\"");
+        string next_link("<a href=\"");
         next_link.append(d.path().string());
         next_link.append("\">");
         next_link.append(d.path().string());
@@ -248,12 +247,12 @@ std::string generate_index_html(fs::path dir) {
 /**
  * Sends a http 200 OK response
  */
-void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type) {
+void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
     cout << "HTTP TYPE: >>>>>>> " << http_type << endl << endl;
 
-	//std::string ret("HTTP/1.1 200 OK\r\nDate: ");
+	//string ret("HTTP/1.1 200 OK\r\nDate: ");
 	
-	std::string ret;
+	string ret;
 	ret += http_type;
 	ret.append(" 200 OK\r\nDate: ");
 	
@@ -264,16 +263,16 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
     ret.append("\r\n");
     ret.append("Content-Length: ");
     if (size < 0) {
-        ret.append(boost::lexical_cast<std::string>(content.length()));
+        ret.append(boost::lexical_cast<string>(content.length()));
     }
     else {
-        ret.append(boost::lexical_cast<std::string>(s.size()));
+        ret.append(boost::lexical_cast<string>(s.size()));
     }
     ret.append("\r\n");
 
     /* add content type */
     ret.append("Content-Type: ");
-    std::string extension(ext.string());
+    string extension(ext.string());
     ret.append(extension.substr(1));
     ret.append("\r\n\r\n");
 
@@ -314,8 +313,8 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
 /**
  * Send 404 error html page
  */
-void send_file_not_found(const int client_sock, std::string http_type) {
-    std::string ret(http_type);
+void send_file_not_found(const int client_sock, string http_type) {
+    string ret(http_type);
 	cout << "HTTP TYPE IN FILE NOT FOUND :::::: " << http_type << endl << endl;
     ret.append("404 File not found\r\nConnection: close\r\nDate: ");
 
@@ -333,10 +332,10 @@ void send_file_not_found(const int client_sock, std::string http_type) {
 /**
  * Returns the boost::filesystem path to the specified path
  */
-fs::path get_path(char buff[1024], std::string location_str) {
+fs::path get_path(char buff[1024], string location_str) {
 
     char search_buff[512];
-    std::string folder("WWW");
+    string folder("WWW");
     folder += location_str;
     folder.copy(search_buff, BUFF_SIZE);
 
@@ -364,10 +363,10 @@ bool is_valid_request(string buff) {
 /**
  * Send http 400 bad request response
  */
-void send_bad_request(const int client_sock, std::string http_type) {
-	std::string ret(http_type);
+void send_bad_request(const int client_sock, string http_type) {
+	string ret(http_type);
 	ret.append("400 Bad Request\r\nConnection: close\r\nDate: ");
-    //std::string ret("HTTP:/1.1 400 Bad Request\r\nConnection: close\r\nDate: ");
+    //string ret("HTTP:/1.1 400 Bad Request\r\nConnection: close\r\nDate: ");
     ret.append(date_to_string());
     ret.append("\r\n");
 
@@ -378,8 +377,8 @@ void send_bad_request(const int client_sock, std::string http_type) {
 }
 
 /*
-void send_bad_request(const int client_sock, std::string html_type) {
-    std::string ret;
+void send_bad_request(const int client_sock, string html_type) {
+    string ret;
     ret += http_type;
     ret.append(" 404 File not found\r\nConnection: close\r\nDate: ");
 
@@ -396,14 +395,14 @@ void send_bad_request(const int client_sock, std::string html_type) {
 */
 
 /**
- * Converts time_t of current time to a std::string
+ * Converts time_t of current time to a string
  * @return date_str the date string
  */
-std::string date_to_string() {
+string date_to_string() {
     time_t curr_time = time(0);
     char get_data[80];
     strftime(get_data, 80, "%a, %d %b %Y %X", localtime(&curr_time));
-    std::string date_str(get_data);
+    string date_str(get_data);
     return date_str;
 }
 
