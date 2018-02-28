@@ -278,15 +278,10 @@ string generate_index_html(fs::path dir) {
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
     cout << "HTTP TYPE: >>>>>>> " << http_type << endl << endl;
-
-	//string ret("HTTP/1.1 200 OK\r\nDate: ");
-	
 	string ret;
 	ret += http_type;
 	ret.append(" 200 OK\r\nDate: ");
 	
-	//cout << ext << "\r\n";
-
     /* add date */
     ret.append(date_to_string());
     ret.append("\r\n");
