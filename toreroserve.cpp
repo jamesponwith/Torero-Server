@@ -585,6 +585,6 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
 
 void threadFunction(int id, string client_name) {
 	mutex.lock();
-	printf("%s%d%s%s\n","Thread number ", id, "is handling the request of ", client_name);
+	printf("%s%d%s%s\n","Thread number ", id, "is handling the request of ", client_name.c_str());
 	mutex.unlock();
 }
