@@ -88,7 +88,7 @@ string date_to_string();
 bool is_valid_request(string buff);
 void send_bad_request(const int client_sock, string html_type);
 string generate_index_html(fs::path dir);
-fs::path get_path(char buff[1024], string location_str); 
+fs::path get_path(string location_str); 
 void generate_appropriate_response(const int client_sock, fs::path p, string http_type);
 void send_file_not_found(const int client_sock, string http_response);
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
@@ -135,6 +135,8 @@ void handleClient(const int client_sock) {
         cout << "no data received" << endl;
     }
 
+    cout << "THIS IS THE BUFFER\n" << buff << "\n\n";
+
     char *cmd = std::strtok(buff, " ");
     char *location = std::strtok(NULL, " ");
     char *http_type = std::strtok(NULL, " ");
@@ -143,7 +145,6 @@ void handleClient(const int client_sock) {
     string location_str(location);
     string http_type_str(http_type);
 
-	cout << "HTTP_TYPE_STR <<>><<>> " << http_type_str << endl << endl;
 
     /* check if valid request */
     if (is_valid_request(buff)) {
@@ -156,7 +157,7 @@ void handleClient(const int client_sock) {
     }
 
     /* get path from request */
-    fs::path path_to_file = get_path(buff, location_str);
+    fs::path path_to_file = get_path(location_str);
 
     /* check if file exists */
     if(!fs::exists(path_to_file)) {
@@ -224,6 +225,7 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
  * @return html code in form of C++ string
  */
 string generate_index_html(fs::path dir) {
+    cout << "FULL PATH-------------------------\n" << dir;
     vector<fs::directory_entry> list;
     std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
     string ret_html("<html><head><title>Parent Directory</title></head><body>Files in directory ");
@@ -332,7 +334,7 @@ void send_file_not_found(const int client_sock, string http_type) {
 /**
  * Returns the boost::filesystem path to the specified path
  */
-fs::path get_path(char buff[1024], string location_str) {
+fs::path get_path(string location_str) {
 
     char search_buff[512];
     string folder("WWW");
