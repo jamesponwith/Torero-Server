@@ -97,6 +97,9 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 void send_file_not_found(const int client_sock, string http_response);
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
 
+
+fs::path strip_root(const fs::path &p); 
+
 int main(int argc, char** argv) {
 
     /* Make sure the user called our program correctly. */
@@ -222,6 +225,15 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
         cout << p << " exists, but is neither a regular file nor a directory\n";
     }
 }
+fs::path strip_root(const fs::path &p) {
+    const fs::path& parent_path = p.parent_path();
+    if(parent_path.empty() || parent_path.string() == "/") {
+        return fs::path();
+    }
+    else {
+        return strip_root(parent_path) / p.filename();
+    }
+}
 
 /**
  * Generates html code for the index.html fil
@@ -229,18 +241,29 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
  * @return html code in form of C++ string
  */
 string generate_index_html(fs::path dir) {
-    cout << "FULL PATH-------------------------\n" << dir;
+    fs::path path_no_root = strip_root(dir);
+    cout << "\nPATH_NO_ROOT = " << path_no_root << endl << endl;
+
     vector<fs::directory_entry> list;
+
     std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
     string ret_html("<html><head><title>Parent Directory</title></head><body>Files in directory ");
-    ret_html.append(dir.string());
+    ret_html.append(path_no_root.string());
     ret_html.append("<br>");
 
     for (fs::directory_entry d: list) {
         string next_link("<a href=\"");
-        next_link.append(d.path().string());
+        next_link.append(path_no_root.string());
+        next_link.append("/");
+        next_link.append(d.path().filename().string());
+        next_link.append("/");
+
         next_link.append("\">");
-        next_link.append(d.path().string());
+        next_link.append(path_no_root.string());
+        next_link.append("/");
+        next_link.append(d.path().filename().string());
+        next_link.append("/");
+
         next_link.append("</a><br>");
         ret_html.append(next_link);
     }
@@ -364,7 +387,6 @@ bool is_valid_request(string buff) {
     return regex_search(buff, get);
     // return valid;
 }
-
 
 /**
  * Send http 400 bad request response
@@ -567,6 +589,6 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
 
 void threadFunction(int id, string client_name) {
 	mutex.lock();
-	printf("%s%d%s%s\n","Thread number ", id, "is handling the request of ", client_name.c_str());
+    cout << "Thread number " << id << " is handling the request of " <<  client_name; 
 	mutex.unlock();
 }
