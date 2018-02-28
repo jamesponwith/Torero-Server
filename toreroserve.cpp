@@ -532,6 +532,15 @@ void acceptConnections(const int server_sock) {
          * in a shared buffer and notify the threads (via a condition variable)
          * that there is a new item on this buffer.
          */
+		
+		string clients[3] = {"Phall","James","Pratt"};
+		vector<thread> threads;
+		
+		int count = 3;
+
+		for(int i = 0; i < count; i++)
+			threads.push_back(thread(threadFunction, i, clients[i]));
+
         handleClient(sock);
 
         /*
@@ -539,7 +548,10 @@ void acceptConnections(const int server_sock) {
          * connection, now that we're done with it.
          */
         close(sock);
-    }
+
+    	for(int i = 0; i < count; i++)
+			threads[i].join();
+	}
 }
 
 /**
@@ -585,6 +597,7 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
 
 void threadFunction(int id, string client_name) {
 	mutex.lock();
-	printf("%s%d%s%s\n","Thread number ", id, "is handling the request of ", client_name);
+	printf("%s%d%s%p\n","Thread number ", id, "is handling the request of ", client_name);
 	mutex.unlock();
 }
+
