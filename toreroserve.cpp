@@ -382,24 +382,6 @@ void send_bad_request(const int client_sock, string http_type) {
     sendData(client_sock, msg, sizeof(msg));
 }
 
-/*
-void send_bad_request(const int client_sock, string html_type) {
-    string ret;
-    ret += http_type;
-    ret.append(" 404 File not found\r\nConnection: close\r\nDate: ");
-
-    ret.append(date_to_string());
-    ret.append("\r\n\r\n");
-    ret.append("<html><head><title>Page not found</title></head><body><404 not found></body></html>");
-
-    //copy to char array and sned it
-    char msg[ret.length() + 1];
-    strcpy(msg, ret.c_str());
-    cout << "FILE NOT FOUND ERROR " << msg << "\r\n";
-    sendData(client_sock, msg, sizeof(msg));
-}
-*/
-
 /**
  * Converts time_t of current time to a string
  * @return date_str the date string
