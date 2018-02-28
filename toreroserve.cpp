@@ -89,11 +89,7 @@ bool is_valid_request(string buff);
 void send_bad_request(const int client_sock, std::string html_type);
 //void send_bad_request(const int client_sock);
 std::string generate_index_html(fs::path dir);
-<<<<<<< HEAD
 fs::path get_path(char buff[1024], std::string location_str); 
-=======
-fs::path get_path(char buff[1024], std::string &http_type);
->>>>>>> master
 void generate_appropriate_response(const int client_sock, fs::path p, std::string http_type);
 void send_file_not_found(const int client_sock, std::string http_response);
 void send_http200_response(const int client_sock, int size, fs::path ext, std::vector<char> s, std::string content, std::string http_type);
@@ -161,12 +157,7 @@ void handleClient(const int client_sock) {
     }
 
     /* get path from request */
-<<<<<<< HEAD
     fs::path path_to_file = get_path(buff, location_str);
-=======
-    std::string http_type = "";
-    fs::path path_to_file = get_path(buff, http_type); 
->>>>>>> master
 
     /* check if file exists */
     if(!fs::exists(path_to_file)) {
@@ -324,14 +315,9 @@ void send_http200_response(const int client_sock, int size, fs::path ext, std::v
  * Send 404 error html page
  */
 void send_file_not_found(const int client_sock, std::string http_type) {
-<<<<<<< HEAD
     std::string ret(http_type);
-=======
-    std::string ret;
-    ret += http_type;
 	cout << "HTTP TYPE IN FILE NOT FOUND :::::: " << http_type << endl << endl;
->>>>>>> master
-    ret.append(" 404 File not found\r\nConnection: close\r\nDate: ");
+    ret.append("404 File not found\r\nConnection: close\r\nDate: ");
 
     ret.append(date_to_string());
     ret.append("\r\n\r\n");
@@ -347,20 +333,7 @@ void send_file_not_found(const int client_sock, std::string http_type) {
 /**
  * Returns the boost::filesystem path to the specified path
  */
-<<<<<<< HEAD
 fs::path get_path(char buff[1024], std::string location_str) {
-	/*
-=======
-fs::path get_path(char buff[1024], std::string &http_type_param) {
->>>>>>> master
-    char *cmd = std::strtok(buff, " ");
-    char *location = std::strtok(NULL, " ");
-    char *http_type = std::strtok(NULL, " ");
-
-    std::string cmd_str(cmd);
-    std::string location_str(location);
-    std::string http_type_str(http_type);
-	*/
 
     char search_buff[512];
     std::string folder("WWW");
