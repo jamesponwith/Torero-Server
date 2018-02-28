@@ -46,6 +46,7 @@
 #include <sys/socket.h>
 
 // C++ standard libraries
+#include <mutex>
 #include <vector>
 #include <thread>
 #include <string>
@@ -74,6 +75,7 @@ using std::thread;
 using std::vector;
 
 // This will limit how many clients can be waiting for a connection.
+static std::mutex mutex; 
 static const int BACKLOG = 10;
 static const int BUFF_SIZE = 2048;
 
@@ -83,6 +85,8 @@ int createSocketAndListen(const int port_num);
 void acceptConnections(const int server_sock);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
 void sendData(int socked_fd, const char *data, size_t data_length);
+
+void threadFunction(int id, string client_name);
 
 string date_to_string();
 bool is_valid_request(string buff);
@@ -577,4 +581,10 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
     }
 
     return num_bytes_received;
+}
+
+void threadFunction(int id, string client_name) {
+	mutex.lock();
+	printf("%s%d%s%s\n","Thread number ", id, "is handling the request of ", client_name);
+	mutex.unlock();
 }
