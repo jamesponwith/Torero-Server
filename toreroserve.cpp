@@ -57,7 +57,7 @@
 #include <regex>
 #include <thread>
 #include <fstream>
-
+#include <pthread.h>
 //#include <conditional_variables>
 
 //Boost filesystem libraries
@@ -66,7 +66,7 @@
 #include <boost/range/iterator_range.hpp>
 namespace fs = boost::filesystem;
 
-#define DEBUG 1
+#include "BoundedBuffer.hpp"
 
 using std::cout;
 using std::endl;
@@ -75,12 +75,13 @@ using std::thread;
 using std::vector;
 
 // This will limit how many clients can be waiting for a connection.
-static std::mutex mutex; 
+static std::mutex mutex;
 static const int BACKLOG = 10;
 static const int BUFF_SIZE = 2048;
 
 // forward declarations
-void handleClient(const int client_sock);
+//void handleClient(const int client_sock);
+void handleClient(BoundedBuffer &buff);
 int createSocketAndListen(const int port_num);
 void acceptConnections(const int server_sock);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
@@ -96,8 +97,6 @@ fs::path get_path(string location_str);
 void generate_appropriate_response(const int client_sock, fs::path p, string http_type);
 void send_file_not_found(const int client_sock, string http_response);
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
-
-
 fs::path strip_root(const fs::path &p); 
 
 int main(int argc, char** argv) {
@@ -134,7 +133,9 @@ int main(int argc, char** argv) {
  *
  * @param client_sock The client's socket file descriptor.
  */
-void handleClient(const int client_sock) {
+void handleClient(BoundedBuffer &buffer) {
+//void handleClient(const int client_sock) {
+	int client_sock = buffer.getItem();
     /* receive client data */
     char buff[1024];
     int client_request = receiveData(client_sock, buff, sizeof(buff));
@@ -220,11 +221,19 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
         int pass_pos = (int) position;
         in_file.close();
         send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
-    }
+    	
+		close(client_sock); ///////////// 
+	}
     else {
         cout << p << " exists, but is neither a regular file nor a directory\n";
     }
 }
+
+/**
+ * Strips the root directory from a file path
+ *
+ * &p Holds a certain path which the root must be removed
+ */
 fs::path strip_root(const fs::path &p) {
     const fs::path& parent_path = p.parent_path();
     if(parent_path.empty() || parent_path.string() == "/") {
@@ -377,7 +386,8 @@ fs::path get_path(string location_str) {
  * @return true if valid, false if not
  */
 bool is_valid_request(string buff) {
-    std::regex get("GET /.+ HTTP/.*");
+    //std::regex get("GET /.+ HTTP/.*");
+    std::regex get("GET /.+ HTTP/.*", std::regex_constants::ECMAScript);
     // bool valid = regex_search(buff, get);
     return regex_search(buff, get);
     // return valid;
@@ -496,7 +506,13 @@ int createSocketAndListen(const int port_num) {
  * @param server_sock The socket used by the server.
  */
 void acceptConnections(const int server_sock) {
-    while (true) {
+    BoundedBuffer buffer(10);
+	for(size_t i = 0; i < BACKLOG; i++) {
+		thread clientThread (handleClient, std::ref(buffer));
+		clientThread.detach();
+	}
+
+	while (true) {
         // Declare a socket for the client connection.
         int sock;
 
@@ -531,25 +547,16 @@ void acceptConnections(const int server_sock) {
          * in a shared buffer and notify the threads (via a condition variable)
          * that there is a new item on this buffer.
          */
-		
-		string clients[3] = {"Phall","James","Pratt"};
-		vector<thread> threads;
-		
-		int count = 3;
 
-		for(int i = 0; i < count; i++)
-			threads.push_back(thread(threadFunction, i, clients[i]));
-
-        handleClient(sock);
+        //handleClient(sock);
 
         /*
          * Tell the OS to clean up the resources associated with that client
          * connection, now that we're done with it.
          */
-        close(sock);
-
-    	for(int i = 0; i < count; i++)
-			threads[i].join();
+        
+		buffer.putItem(sock);
+		//close(sock);
 	}
 }
 
