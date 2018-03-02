@@ -30,18 +30,15 @@
 #include <sys/socket.h>
 
 // C++ standard libraries
+#include <regex>
 #include <mutex>
 #include <vector>
 #include <string>
-#include <iostream>
-#include <system_error>
-
-#include <mutex>
-#include <regex>
 #include <thread>
 #include <fstream>
+#include <iostream>
 #include <pthread.h>
-//#include <conditional_variables>
+#include <system_error>
 
 //Boost filesystem libraries
 #include <boost/filesystem.hpp>
@@ -63,22 +60,20 @@ static const int BACKLOG = 10;
 static const int BUFF_SIZE = 2048;
 
 // forward declarations
-//void handleClient(const int client_sock);
+string date_to_string();
+bool is_valid_request(string buff);
 void handleClient(BoundedBuffer &buff);
+string generate_index_html(fs::path dir);
+fs::path strip_root(const fs::path &p); 
+fs::path get_path(string location_str); 
 int createSocketAndListen(const int port_num);
 void acceptConnections(const int server_sock);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
-void sendData(int socked_fd, const char *data, size_t data_length);
-
-string date_to_string();
-bool is_valid_request(string buff);
 void send_bad_request(const int client_sock, string html_type);
-string generate_index_html(fs::path dir);
-fs::path get_path(string location_str); 
-void generate_appropriate_response(const int client_sock, fs::path p, string http_type);
+void sendData(int socked_fd, const char *data, size_t data_length);
 void send_file_not_found(const int client_sock, string http_response);
+void generate_appropriate_response(const int client_sock, fs::path p, string http_type);
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
-fs::path strip_root(const fs::path &p); 
 
 int main(int argc, char** argv) {
 
@@ -112,12 +107,7 @@ int main(int argc, char** argv) {
  */
 void acceptConnections(const int server_sock) {
 	BoundedBuffer buffer(10);
-
-	//for(size_t i = 0; i < BACKLOG; i++) {
-		//thread clientThread(handleClient, std::ref(buffer));
-		//clientThread.detach();
-	//}
-
+	
 	while (true) {
 		// Declare a socket for the client connection.
 		int sock;
@@ -144,15 +134,9 @@ void acceptConnections(const int server_sock) {
 			exit(1);
 		}
 
-		/*
-		 * At this point, you have a connected socket (named sock) that you can
-		 * use to send() and recv(). The handleClient function should handle all
+		/* 
+		 * Spawn a thread to run handleClient function which will handle all
 		 * of the sending and receiving to/from the client.
-		 *
-		 * TODO: You shouldn't call handleClient directly here. Instead it
-		 * should be called from a separate thread. You'll just need to put sock
-		 * in a shared buffer and notify the threads (via a condition variable)
-		 * that there is a new item on this buffer.
 		 */
 
 		thread clientThread(handleClient, std::ref(buffer));
@@ -164,7 +148,6 @@ void acceptConnections(const int server_sock) {
 		 */
 
 		buffer.putItem(sock);
-		//close(sock);
 	}
 }
 
@@ -178,7 +161,6 @@ void acceptConnections(const int server_sock) {
  * @param client_sock The client's socket file descriptor.
  */
 void handleClient(BoundedBuffer &buffer) {
-	//void handleClient(const int client_sock) {
 	int client_sock = buffer.getItem();
 
 	/* receive client data */
@@ -187,7 +169,6 @@ void handleClient(BoundedBuffer &buffer) {
 	if (client_request <= 0) {
 		cout << "no data received" << endl;
 	}
-
 	char *cmd = std::strtok(buff, " ");
 	char *location = std::strtok(NULL, " ");
 	char *http_type = std::strtok(NULL, " ");
@@ -196,14 +177,12 @@ void handleClient(BoundedBuffer &buffer) {
 	string location_str(location);
 	string http_type_str(http_type);
 
-
 	/* check if valid request */
 	if (is_valid_request(buff)) {
 		send_bad_request(client_sock, http_type);
 		close(client_sock);
 		return; 
 	}
-
 	/* get path from request */
 	fs::path path_to_file = get_path(location_str);
 
@@ -213,13 +192,8 @@ void handleClient(BoundedBuffer &buffer) {
 		close(client_sock);
 		return;
 	}
-
 	generate_appropriate_response(client_sock, path_to_file, http_type);
-
-	// TODO: Send response to client.
-
-	// TODO: Close connection with client.
-	 close(client_sock);
+	close(client_sock);
 }
 
 /**
@@ -229,13 +203,16 @@ void handleClient(BoundedBuffer &buffer) {
  * @return true if valid, false if not
  */
 bool is_valid_request(string buff) {
-	//std::regex get("GET /.+ HTTP/.*");
 	std::regex get("GET /.+ HTTP/.*", std::regex_constants::ECMAScript);
 	return regex_search(buff, get);
 }
 
 /**
  * Generates appropriate response of the GET request
+ *
+ * @param client_sock Represents the socket assaigned to the client
+ * @param p Boost file system formatted path for requested content
+ * @param http_type Holds the HTTP/#.# from client request
  */
 void generate_appropriate_response(const int client_sock, fs::path p, string http_type) {
 	if (fs::is_directory(p)) {
@@ -249,7 +226,6 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 		if (fs::exists(tmp_path)) {
 			html = tmp_path.string();
 			generate_appropriate_response(client_sock, tmp_path, http_type);
-			 //send_http200_response(client_sock, -1, ".html", vector<char>(), html);
 		}
 		else {
 			html = generate_index_html(p);
@@ -260,14 +236,11 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 		fs::path d(fs::extension(p));
 
 		std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
-		//in_file.open(p.string(), std::ios::binary|std::ios::in);
 		if (!in_file) {
 			cout << "Unable to open file\r\n";
 		}
-
 		in_file.seekg(0, std::ios::end);
 		std::streampos position = in_file.tellg();
-		// cout << "length: " << position << "\r\n";
 		in_file.seekg(0, std::ios::beg);
 		vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
 		int pass_pos = (int) position;
@@ -277,7 +250,6 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 	else {
 		cout << p << " exists, but is neither a regular file nor a directory\n";
 	}
-	//close(client_sock); 
 }
 
 /**
@@ -296,6 +268,7 @@ fs::path strip_root(const fs::path &p) {
 
 /**
  * Generates html code for the index.html fil
+ *
  * @param boost::filesystem path for the specified directory
  * @return html code in form of C++ string
  */
@@ -326,7 +299,6 @@ string generate_index_html(fs::path dir) {
 		next_link.append("</a><br>");
 		ret_html.append(next_link);
 	}
-
 	ret_html.append("</body></html>");
 	return ret_html;
 }
@@ -334,6 +306,13 @@ string generate_index_html(fs::path dir) {
 
 /**
  * Sends a http 200 OK response
+ *
+ * @param client_sock Represents the socket assigned to the client
+ * @param size  
+ * @param ext 
+ * @param s
+ * @param content 
+ * @param http_type A string holding the HTTP/#.# from the client request
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
 	cout << "HTTP TYPE: >>>>>>> " << http_type << endl << endl;
@@ -383,7 +362,6 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
 		sendData(client_sock, final_msg, msg_size);
 		return;
 	}
-
 	char entity_body[s.size() + 1];
 	std::copy(s.begin(), s.end(), entity_body);
 	memcpy((final_msg + ret.length()), entity_body, s.size());
@@ -394,6 +372,10 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
 
 /**
  * Send 404 error html page
+ *
+ * @param clinet_sock Represents the socket assigned to the client
+ * @param http_type String holding the HTTP/1.1 portion of the message recieved from
+ * the client
  */
 void send_file_not_found(const int client_sock, string http_type) {
 	string ret(http_type);
@@ -413,6 +395,10 @@ void send_file_not_found(const int client_sock, string http_type) {
 
 /**
  * Returns the boost::filesystem path to the specified path
+ * 
+ * @param location_str The path of the desired request which will have WWW
+ * appended 
+ * @return p A Boost FIle System formatted path  
  */
 fs::path get_path(string location_str) {
 
@@ -421,21 +407,21 @@ fs::path get_path(string location_str) {
 	folder += location_str;
 	folder.copy(search_buff, BUFF_SIZE);
 
-	//cout << "Before sending, send buff is: " << folder << endl;
-
 	fs::path p(folder);
-	// cout << p;
+	
 	return p;
 }
 
 
 /**
  * Send http 400 bad request response
+ *
+ * @param client_sock Represents the socket assaigned to the client
+ * @param http_type String holding the HTTP/#.# from the client request
  */
 void send_bad_request(const int client_sock, string http_type) {
 	string ret(http_type);
 	ret.append("400 Bad Request\r\nConnection: close\r\nDate: ");
-	//string ret("HTTP:/1.1 400 Bad Request\r\nConnection: close\r\nDate: ");
 	ret.append(date_to_string());
 	ret.append("\r\n");
 
@@ -447,6 +433,7 @@ void send_bad_request(const int client_sock, string http_type) {
 
 /**
  * Converts time_t of current time to a string
+ * 
  * @return date_str the date string
  */
 string date_to_string() {
@@ -546,8 +533,6 @@ int createSocketAndListen(const int port_num) {
  * @param data_length Number of bytes of data to send.
  */
 void sendData(int socked_fd, const char *data, size_t data_length) {
-	// TODO: Wrap the following code in a loop so that it keeps sending until
-	// the data has been completely sent.
 	int num_bytes_left = data_length;
 	while (num_bytes_left > 0) {
 		int num_bytes_sent = send(socked_fd, data, data_length, 0);
