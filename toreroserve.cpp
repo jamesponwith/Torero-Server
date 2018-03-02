@@ -178,6 +178,7 @@ void acceptConnections(const int server_sock) {
  * @param client_sock The client's socket file descriptor.
  */
 void handleClient(BoundedBuffer &buffer) {
+<<<<<<< HEAD
 	//void handleClient(const int client_sock) {
 	int client_sock = buffer.getItem();
 
@@ -232,6 +233,54 @@ bool is_valid_request(string buff) {
 	//std::regex get("GET /.+ HTTP/.*");
 	std::regex get("GET /.+ HTTP/.*", std::regex_constants::ECMAScript);
 	return regex_search(buff, get);
+=======
+//void handleClient(const int client_sock) {
+	int client_sock = buffer.getItem();
+    /* receive client data */
+    char buff[1024];
+    int client_request = receiveData(client_sock, buff, sizeof(buff));
+    if (client_request <= 0) {
+        cout << "no data received" << endl;
+    }
+
+    cout << "THIS IS THE BUFFER\n" << buff << "\n\n";
+
+    char *cmd = std::strtok(buff, " ");
+    char *location = std::strtok(NULL, " ");
+    char *http_type = std::strtok(NULL, " ");
+
+    string cmd_str(cmd);
+    string location_str(location);
+    string http_type_str(http_type);
+
+
+    /* check if valid request */
+    if (is_valid_request(buff)) {
+        send_bad_request(client_sock, http_type);
+        // close(client_sock);
+        return; // invalid request - we peacing out!
+    }
+    else {
+        // cout << "valid request" << endl;
+    }
+
+    /* get path from request */
+    fs::path path_to_file = get_path(location_str);
+
+    /* check if file exists */
+    if(!fs::exists(path_to_file)) {
+        send_file_not_found(client_sock, http_type);
+        // close(client_sock);
+        return;
+    }
+
+    generate_appropriate_response(client_sock, path_to_file, http_type);
+
+    // TODO: Send response to client.
+
+    // TODO: Close connection with client.
+    // close(client_sock);
+>>>>>>> fbef0558ddc0871bba9bf8676eb43e81c30f8f69
 }
 
 /**
@@ -254,6 +303,7 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 		else {
 			html = generate_index_html(p);
 			send_http200_response(client_sock, -1, ".html", vector<char>(), html, http_type);
+<<<<<<< HEAD
 		}
 	}
 	else if (fs::is_regular_file(p)) {
@@ -278,10 +328,41 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 		cout << p << " exists, but is neither a regular file nor a directory\n";
 	}
 	//close(client_sock); 
+=======
+        }
+    }
+    else if (fs::is_regular_file(p)) {
+        fs::path d(fs::extension(p));
+
+        std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
+        //in_file.open(p.string(), std::ios::binary|std::ios::in);
+        if (!in_file) {
+            cout << "Unable to open file\r\n";
+        }
+
+        in_file.seekg(0, std::ios::end);
+        std::streampos position = in_file.tellg();
+        // cout << "length: " << position << "\r\n";
+        in_file.seekg(0, std::ios::beg);
+        vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+        int pass_pos = (int) position;
+        in_file.close();
+        send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
+    	
+		close(client_sock); ///////////// 
+	}
+    else {
+        cout << p << " exists, but is neither a regular file nor a directory\n";
+    }
+>>>>>>> fbef0558ddc0871bba9bf8676eb43e81c30f8f69
 }
 
 /**
  * Strips the root directory from a file path
+<<<<<<< HEAD
+=======
+ *
+>>>>>>> fbef0558ddc0871bba9bf8676eb43e81c30f8f69
  * &p Holds a certain path which the root must be removed
  */
 fs::path strip_root(const fs::path &p) {
@@ -428,6 +509,22 @@ fs::path get_path(string location_str) {
 	return p;
 }
 
+<<<<<<< HEAD
+=======
+/**
+ * Checks to see if the incoming buffer is a valid get request
+ *
+ * @pram buff The incoming buffer
+ * @return true if valid, false if not
+ */
+bool is_valid_request(string buff) {
+    //std::regex get("GET /.+ HTTP/.*");
+    std::regex get("GET /.+ HTTP/.*", std::regex_constants::ECMAScript);
+    // bool valid = regex_search(buff, get);
+    return regex_search(buff, get);
+    // return valid;
+}
+>>>>>>> fbef0558ddc0871bba9bf8676eb43e81c30f8f69
 
 /**
  * Send http 400 bad request response
@@ -471,6 +568,7 @@ int createSocketAndListen(const int port_num) {
 		exit(1);
 	}
 
+<<<<<<< HEAD
 	/*
 	 * A server socket is bound to a port, which it will listen on for incoming
 	 * connections.  By default, when a bound socket is closed, the OS waits a
@@ -492,6 +590,65 @@ int createSocketAndListen(const int port_num) {
 	if (retval < 0) {
 		perror("Setting socket option failed");
 		exit(1);
+=======
+/**
+ * Sit around forever accepting new connections from client.
+ *
+ * @param server_sock The socket used by the server.
+ */
+void acceptConnections(const int server_sock) {
+    BoundedBuffer buffer(10);
+	for(size_t i = 0; i < BACKLOG; i++) {
+		thread clientThread (handleClient, std::ref(buffer));
+		clientThread.detach();
+	}
+
+	while (true) {
+        // Declare a socket for the client connection.
+        int sock;
+
+        /*
+         * Another address structure.  This time, the system will automatically
+         * fill it in, when we accept a connection, to tell us where the
+         * connection came from.
+         */
+        struct sockaddr_in remote_addr;
+        unsigned int socklen = sizeof(remote_addr);
+
+        /*
+         * Accept the first waiting connection from the server socket and
+         * populate the address information.  The result (sock) is a socket
+         * descriptor for the conversation with the newly connected client.  If
+         * there are no pending connections in the back log, this function will
+         * block indefinitely while waiting for a client connection to be made.
+         */
+        sock = accept(server_sock, (struct sockaddr*) &remote_addr, &socklen);
+        if (sock < 0) {
+            perror("Error accepting connection");
+            exit(1);
+        }
+
+        /*
+         * At this point, you have a connected socket (named sock) that you can
+         * use to send() and recv(). The handleClient function should handle all
+         * of the sending and receiving to/from the client.
+         *
+         * TODO: You shouldn't call handleClient directly here. Instead it
+         * should be called from a separate thread. You'll just need to put sock
+         * in a shared buffer and notify the threads (via a condition variable)
+         * that there is a new item on this buffer.
+         */
+
+        //handleClient(sock);
+
+        /*
+         * Tell the OS to clean up the resources associated with that client
+         * connection, now that we're done with it.
+         */
+        
+		buffer.putItem(sock);
+		//close(sock);
+>>>>>>> fbef0558ddc0871bba9bf8676eb43e81c30f8f69
 	}
 
 	/*
