@@ -74,6 +74,8 @@ void send_file_not_found(const int client_sock, string http_response);
 void generate_response(const int client_sock, fs::path p, string http_type);
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
 
+void send_regular_file(const int client_sock, fs::path p, string http_type); 
+
 int main(int argc, char** argv) {
 
     /* Make sure the user called our program correctly. */
@@ -116,7 +118,6 @@ void acceptConnections(const int server_sock) {
          * fill it in, when we accept a connection, to tell us where the
          * connection came from.
          */
-
         struct sockaddr_in remote_addr;
         unsigned int socklen = sizeof(remote_addr); 
 
@@ -137,7 +138,6 @@ void acceptConnections(const int server_sock) {
          * Spawn a thread to run handleClient function which will handle all
          * of the sending and receiving to/from the client.
          */
-
         thread clientThread(handleClient, std::ref(buffer));
         clientThread.detach();
 
@@ -145,7 +145,6 @@ void acceptConnections(const int server_sock) {
          * Tell the OS to clean up the resources associated with that client
          * connection, now that we're done with it.
          */
-
         buffer.putItem(sock);
     }
 }
@@ -234,6 +233,22 @@ bool is_valid_request(string buff) {
     return regex_match(buff, get);
     //return regex_search(buff, get);
 }
+void send_regular_file(const int client_sock, fs::path p, string http_type) {
+    fs::path d(fs::extension(p));
+
+    std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
+    if (!in_file) {
+        cout << "Unable to open file\r\n";
+    }
+
+    in_file.seekg(0, std::ios::end);
+    std::streampos position = in_file.tellg();
+    in_file.seekg(0, std::ios::beg);
+    vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+    int pass_pos = (int) position;
+    in_file.close();
+    send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
+}
 
 /**
  * Generates appropriate response of the GET request
@@ -262,20 +277,21 @@ void generate_response(const int client_sock, fs::path p, string http_type) {
         }
     }
     else if (fs::is_regular_file(p)) {
-        fs::path d(fs::extension(p));
-
-        std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
-        if (!in_file) {
-            cout << "Unable to open file\r\n";
-        }
-
-        in_file.seekg(0, std::ios::end);
-        std::streampos position = in_file.tellg();
-        in_file.seekg(0, std::ios::beg);
-        vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-        int pass_pos = (int) position;
-        in_file.close();
-        send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
+        send_regular_file(client_sock, p, http_type); 
+        // fs::path d(fs::extension(p));
+        //
+        // std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
+        // if (!in_file) {
+        //     cout << "Unable to open file\r\n";
+        // }
+        //
+        // in_file.seekg(0, std::ios::end);
+        // std::streampos position = in_file.tellg();
+        // in_file.seekg(0, std::ios::beg);
+        // vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+        // int pass_pos = (int) position;
+        // in_file.close();
+        // send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
     }
     else {
         cout << p << " exists, but is neither a regular file nor a directory\n";
