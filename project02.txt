@@ -41,7 +41,7 @@ will receive a grade of 0).
    However, if you are working with a partner, you must each spend a buck to
    get a 24-hour extension (i.e. 2 total bucks spent).
 
-	0 bucks
+	1 bucks
 
 6. Any feedback you with to give me relating the project (e.g. Was it
    interesting? How could it be improved?)
