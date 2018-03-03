@@ -167,7 +167,8 @@ void handleClient(BoundedBuffer &buffer) {
 	char buff[1024];
 	int client_request = receiveData(client_sock, buff, sizeof(buff));
 	if (client_request <= 0) {
-		cout << "no data received" << endl;
+		cout << "no data received" << endl << endl;
+		return;
 	}
 	char *cmd = std::strtok(buff, " ");
 	char *location = std::strtok(NULL, " ");
@@ -300,10 +301,10 @@ string generate_index_html(fs::path dir) {
  * Sends a http 200 OK response
  *
  * @param client_sock Represents the socket assigned to the client
- * @param size  
- * @param ext 
- * @param s
- * @param content 
+ * @param size Size of the vector 
+ * @param ext Extension of the file read into s
+ * @param s Vector of binary contents of file read from handleClient
+ * @param content Contents of HTML file
  * @param http_type A string holding the HTTP/#.# from the client request
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
@@ -349,7 +350,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
 		strcpy(content_msg, content.c_str());
 		memcpy((final_msg + ret.length()), content_msg, content.length());
 
-		cout << final_msg << endl;
+		cout << "HTTP TYPE: " << final_msg << endl;
 		sendData(client_sock, final_msg, msg_size);
 		return;
 	}

@@ -27,15 +27,14 @@ will receive a grade of 0).
 
 3. The estimated number of hours spent working on the project.
    Break this down into three categories:
-		- Time spent partner 1 spent working alone:		#
-		- Time spent partner 2 spent working alone:		#
-		- Time spent working together:					#
+		- Time spent partner 1 spent working alone:	    22	
+		- Time spent partner 2 spent working alone:		18
+		- Time spent working together:					12
 
 4. A list of missing features and/or known bugs.
 
-	We do not believe there are any missing features. Everyonce in a while our 
-	server will not work sending an improper 404 response when the path 
-	requested should work.
+	We do not believe there are any missing features and I believe I fixed the
+	abort error. 
 
 5. The number of project bucks you are spending on this project. 
    Remember that one project buck buys you a 24-hour deadline extension.
@@ -48,4 +47,5 @@ will receive a grade of 0).
    interesting? How could it be improved?)
 
 	The hardest part of this project was correctly using regex, also the
-	outdated compiler issue caused some delays.
+	outdated compiler issue caused some delays. I think learning a bit about
+	the Boost File System and regex in class would be extremely helpful. 
