@@ -163,16 +163,18 @@ void handleClient(BoundedBuffer &buffer) {
 
     /* receive client data */
     char buff[1024];
-    string message_buffer = "";
     int client_request = receiveData(client_sock, buff, sizeof(buff));
     if (client_request <= 0) {
         cout << "no data received" << endl << endl;
         return;
     }
-    char *cmd = std::strtok(buff, " ");
+  	
+	/* Tokenize buff */
+	char *cmd = std::strtok(buff, " ");
     char *location = std::strtok(NULL, " ");
     char *http_type = std::strtok(NULL, " ");
-
+	
+	/* Append tokens to empty string (avoiding the std::string constructor) */
     string cmd_str = "";
     cmd_str += cmd;
 
@@ -182,14 +184,13 @@ void handleClient(BoundedBuffer &buffer) {
     string http_type_str = "";
     http_type_str += http_type;
 
-    message_buffer += cmd_str;
+	/* Create message by appending the strings together with a space between */
+	string message_buffer = "";
+	message_buffer += cmd_str;
     message_buffer += " ";
     message_buffer += location_str;
     message_buffer += " ";
     message_buffer += http_type_str;
-
-    cout << buff << " is the current buff" << endl << endl;
-    cout << " THIS IS THE MESSAGE BUFFER " << message_buffer << endl;
 
     /* check if valid request */
     if(!is_valid_request(message_buffer)) {
@@ -221,33 +222,8 @@ void handleClient(BoundedBuffer &buffer) {
  * @return true if valid, false if not
  */
 bool is_valid_request(string buff) {
-    //std::regex get("GET /.* HTTP/.*", std::regex_constants::ECMAScript);
     std::regex get("GET([ \t]+)/([a-zA-Z1-9_\\-\\/.]*)([ \t]+)HTTP/([0-9]+).([0-9]+)([^]*)(Host:)*([^]*)", std::regex_constants::ECMAScript);
-
-    if (regex_match(buff, get)) {
-        cout << "match" << endl;
-    }
-    else {
-        cout << "not match" << endl;
-    }	
     return regex_match(buff, get);
-    //return regex_search(buff, get);
-}
-void send_regular_file(const int client_sock, fs::path p, string http_type) {
-    fs::path d(fs::extension(p));
-
-    std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
-    if (!in_file) {
-        cout << "Unable to open file\r\n";
-    }
-
-    in_file.seekg(0, std::ios::end);
-    std::streampos position = in_file.tellg();
-    in_file.seekg(0, std::ios::beg);
-    vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-    int pass_pos = (int) position;
-    in_file.close();
-    send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
 }
 
 /**
@@ -278,24 +254,34 @@ void generate_response(const int client_sock, fs::path p, string http_type) {
     }
     else if (fs::is_regular_file(p)) {
         send_regular_file(client_sock, p, http_type); 
-        // fs::path d(fs::extension(p));
-        //
-        // std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
-        // if (!in_file) {
-        //     cout << "Unable to open file\r\n";
-        // }
-        //
-        // in_file.seekg(0, std::ios::end);
-        // std::streampos position = in_file.tellg();
-        // in_file.seekg(0, std::ios::beg);
-        // vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-        // int pass_pos = (int) position;
-        // in_file.close();
-        // send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
     }
     else {
         cout << p << " exists, but is neither a regular file nor a directory\n";
     }
+}
+
+/**
+ * Sends regurlar file after checking if the request is not a directory
+ *
+ * @param client_sock The socket assaigned to the given client
+ * @param p Holds the path of the content requested
+ * @param http_type HTTP/#.# retrieved from client request
+ */
+void send_regular_file(const int client_sock, fs::path p, string http_type) {
+    fs::path d(fs::extension(p));
+
+    std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
+    if (!in_file) {
+        cout << "Unable to open file\r\n";
+    }
+
+    in_file.seekg(0, std::ios::end);
+    std::streampos position = in_file.tellg();
+    in_file.seekg(0, std::ios::beg);
+    vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+    int pass_pos = (int) position;
+    in_file.close();
+    send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
 }
 
 /**
@@ -347,6 +333,17 @@ string generate_html_links(fs::path dir) {
     return ret_html;
 }
 
+/**
+ * Generates the header for the OK 200 response
+ *
+ * @param size Size of Vector 
+ * @param http_type The HTTP/#.# obtained from client request
+ * @param content The contnet of HTML file
+ * @param s Vector of binary contents of file read from handleClient
+ * @param ext The extension of the file requested
+ * @return ret Holds the compiled header message required to form a correct
+ * 200 response
+ */
 string sendOKHeader(int size, string http_type, string content, vector<char> s, fs::path ext) {
     string ret = "";
     ret += http_type;
@@ -399,7 +396,6 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
         msg_size = ret.length() + 2 + size;
     }
 
-    /* two extra buffers for c_stringy operations */
     char message[ret.length() + 1];
     strcpy(message, ret.c_str());
 
@@ -415,6 +411,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
         sendData(client_sock, final_msg, msg_size);
         return;
     }
+
     char entity_body[s.size() + 1];
     std::copy(s.begin(), s.end(), entity_body);
     memcpy((final_msg + ret.length()), entity_body, s.size());
