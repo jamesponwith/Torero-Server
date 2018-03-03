@@ -165,7 +165,7 @@ void handleClient(BoundedBuffer &buffer) {
     char buff[1024];
     int client_request = receiveData(client_sock, buff, sizeof(buff));
     if (client_request <= 0) {
-        cout << "no data received" << endl << endl;
+        //cout << "no data received" << endl << endl;
         return;
     }
   	
@@ -183,7 +183,6 @@ void handleClient(BoundedBuffer &buffer) {
 
     string http_type_str = "";
 	if (http_type == NULL) {
-		cout << "HTTP TYPE IS NULL\n";
 		http_type_str += "HTTP/1.1";
 	}
 	else {
@@ -200,7 +199,6 @@ void handleClient(BoundedBuffer &buffer) {
 
     /* check if valid request */
     if(!is_valid_request(message_buffer)) {
-        cout << "bad request" << endl;
         send_bad_request(client_sock, http_type_str);
         close(client_sock);
         return; 
@@ -238,10 +236,6 @@ bool is_valid_request(string buff) {
  */
 void generate_response(const int client_sock, fs::path p, string http_type) {
     if (fs::is_directory(p)) {
-        if (fs::path_traits::empty(p)) {
-            cout << "Directory is empty" << endl;
-        }
-
         /* check if contains index.html */
         fs::path tmp_path = p;
         tmp_path /= "index.html";
@@ -259,9 +253,6 @@ void generate_response(const int client_sock, fs::path p, string http_type) {
     else if (fs::is_regular_file(p)) {
         send_regular_file(client_sock, p, http_type); 
     }
-    else {
-        cout << p << " exists, but is neither a regular file nor a directory\n";
-    }
 }
 
 /**
@@ -276,7 +267,7 @@ void send_regular_file(const int client_sock, fs::path p, string http_type) {
 
     std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
     if (!in_file) {
-        cout << "Unable to open file\r\n";
+        cout << "Cant open file\r\n";
     }
 
     in_file.seekg(0, std::ios::end);
@@ -411,7 +402,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
         strcpy(content_msg, content.c_str());
         memcpy((final_msg + ret.length()), content_msg, content.length());
 
-        cout << "HTTP TYPE: " << final_msg << endl;
+        //cout << "HTTP TYPE: " << final_msg << endl;
         sendData(client_sock, final_msg, msg_size);
         return;
     }
@@ -419,7 +410,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
     char msg_body[s.size() + 1];
     std::copy(s.begin(), s.end(), msg_body);
     memcpy((final_msg + ret.length()), msg_body, s.size());
-    cout << final_msg << endl;
+    //cout << final_msg << endl;
     sendData(client_sock, final_msg, msg_size);
 }
 
@@ -477,14 +468,14 @@ void send_bad_request(const int client_sock, string http_type) {
         http_type = "HTTP/1.1";
     }
     string ret = "";
-    ret += http_type;
-    ret.append("400 Bad Request\r\nConnection: close\r\nDate: ");
+	ret += http_type;
+    ret.append(" 400 Bad Request\r\nConnection: close\r\nDate: ");
     ret.append(date_to_string());
     ret.append("\r\n");
 
     char msg[ret.length() + 1];
     strcpy(msg, ret.c_str());
-    cout << "BAD REQUEST: " << msg << endl;
+    //cout << "BAD REQUEST: " << msg << endl;
     sendData(client_sock, msg, sizeof(msg));
 }
 
