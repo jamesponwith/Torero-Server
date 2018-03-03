@@ -10,7 +10,6 @@
  * 			 patrickhall@sandeigo.edu
  * Author 2: James Ponwith
  * 			 jponwith@sandeiego.edu
- *
  */
 
 // standard C libraries
