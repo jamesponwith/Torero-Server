@@ -5,7 +5,7 @@ Submissions where this file has not been completed will NOT be accepted (i.e.
 will receive a grade of 0).
 
 1. Partner 1's FULL Name: 			Patrick Hall
-   Partner 1's USD Email Address: 	phall@sandiego.edu
+   Partner 1's USD Email Address: 	patrickhall@sandiego.edu
    Partner 2's FULL Name: 			James Ponwth
    Partner 2's USD Email Address:	jponwith@sandiego.edu
 
@@ -29,7 +29,7 @@ will receive a grade of 0).
    Break this down into three categories:
 		- Time spent partner 1 spent working alone:	    22	
 		- Time spent partner 2 spent working alone:		18
-		- Time spent working together:					12
+		- Time spent working together:					18
 
 4. A list of missing features and/or known bugs.
 
