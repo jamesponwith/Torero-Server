@@ -203,7 +203,7 @@ void handleClient(BoundedBuffer &buffer) {
  * @return true if valid, false if not
  */
 bool is_valid_request(string buff) {
-	std::regex get("GET /.+ HTTP/.*", std::regex_constants::ECMAScript);
+	std::regex get("GET /.* HTTP/.*", std::regex_constants::ECMAScript);
 	return regex_search(buff, get);
 }
 
@@ -274,10 +274,7 @@ fs::path strip_root(const fs::path &p) {
  */
 string generate_index_html(fs::path dir) {
 	fs::path path_no_root = strip_root(dir);
-	cout << "\nPATH_NO_ROOT = " << path_no_root << endl << endl;
-
 	vector<fs::directory_entry> list;
-
 	std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
 	string ret_html("<html><head><title>Parent Directory</title></head><body>Files in directory ");
 	ret_html.append(path_no_root.string());
@@ -285,17 +282,12 @@ string generate_index_html(fs::path dir) {
 
 	for (fs::directory_entry d: list) {
 		string next_link("<a href=\"");
-		next_link.append(path_no_root.string());
-		next_link.append("/");
 		next_link.append(d.path().filename().string());
 		next_link.append("/");
-
+		
 		next_link.append("\">");
-		next_link.append(path_no_root.string());
-		next_link.append("/");
 		next_link.append(d.path().filename().string());
 		next_link.append("/");
-
 		next_link.append("</a><br>");
 		ret_html.append(next_link);
 	}
@@ -315,7 +307,6 @@ string generate_index_html(fs::path dir) {
  * @param http_type A string holding the HTTP/#.# from the client request
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
-	cout << "HTTP TYPE: >>>>>>> " << http_type << endl << endl;
 	string ret;
 	ret += http_type;
 	ret.append(" 200 OK\r\nDate: ");
@@ -358,15 +349,14 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
 		strcpy(content_msg, content.c_str());
 		memcpy((final_msg + ret.length()), content_msg, content.length());
 
-		cout << "200 MSG size < 0 " << final_msg << "\r\n";
+		cout << final_msg << endl;
 		sendData(client_sock, final_msg, msg_size);
 		return;
 	}
 	char entity_body[s.size() + 1];
 	std::copy(s.begin(), s.end(), entity_body);
 	memcpy((final_msg + ret.length()), entity_body, s.size());
-
-	cout << "200 MSG size > 0 " << final_msg << "\r\n";
+	cout << final_msg << endl;
 	sendData(client_sock, final_msg, msg_size);
 }
 
@@ -379,7 +369,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
  */
 void send_file_not_found(const int client_sock, string http_type) {
 	string ret(http_type);
-	cout << "HTTP TYPE IN FILE NOT FOUND :::::: " << http_type << endl << endl;
+	//cout << "HTTP TYPE IN FILE NOT FOUND :::::: " << http_type << endl << endl;
 	ret.append("404 File not found\r\nConnection: close\r\nDate: ");
 
 	ret.append(date_to_string());
@@ -389,7 +379,7 @@ void send_file_not_found(const int client_sock, string http_type) {
 	//copy to char array and sned it
 	char msg[ret.length() + 1];
 	strcpy(msg, ret.c_str());
-	cout << "FILE NOT FOUND ERROR " << msg << "\r\n";
+	//cout << "FILE NOT FOUND ERROR " << msg << "\r\n";
 	sendData(client_sock, msg, sizeof(msg));
 }
 
