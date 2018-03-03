@@ -344,7 +344,7 @@ string generate_html_links(fs::path dir) {
  * @return ret Holds the compiled header message required to form a correct
  * 200 response
  */
-string sendOKHeader(int size, string http_type, string content, vector<char> s, fs::path ext) {
+string generate_ok_header(int size, string http_type, string content, vector<char> s, fs::path ext) {
     string ret = "";
     ret += http_type;
     ret.append(" 200 OK\r\nDate: ");
@@ -386,7 +386,7 @@ string sendOKHeader(int size, string http_type, string content, vector<char> s, 
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
 
     string ret = "";
-    ret += sendOKHeader(size, http_type, content, s, ext);
+    ret += generate_ok_header(size, http_type, content, s, ext);
 
     int msg_size;
     if (size < 0) {
