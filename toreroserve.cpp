@@ -182,7 +182,13 @@ void handleClient(BoundedBuffer &buffer) {
     location_str += location;
 
     string http_type_str = "";
-    http_type_str += http_type;
+	if (http_type == NULL) {
+		cout << "HTTP TYPE IS NULL\n";
+		http_type_str += "HTTP/1.1";
+	}
+	else {
+		http_type_str += http_type;
+	}
 
 	/* Create message by appending the strings together with a space between */
 	string message_buffer = "";
@@ -195,9 +201,6 @@ void handleClient(BoundedBuffer &buffer) {
     /* check if valid request */
     if(!is_valid_request(message_buffer)) {
         cout << "bad request" << endl;
-        if (http_type_str.empty()) {
-            http_type_str.append("HTTP/1.1");
-        }
         send_bad_request(client_sock, http_type_str);
         close(client_sock);
         return; 
@@ -247,9 +250,10 @@ void generate_response(const int client_sock, fs::path p, string http_type) {
             html += tmp_path.string();
             generate_response(client_sock, tmp_path, http_type);
         }
-        else {
+        else { // doesn't contain index.html; generate links and send with links
             html = generate_html_links(p);
-            send_http200_response(client_sock, -1, ".html", vector<char>(), html, http_type);
+			send_http200_response(client_sock, -1, ".html", vector<char>(), html, http_type);
+            //send_http200_response(client_sock, 1, ".html", vector<char>(), html, http_type);
         }
     }
     else if (fs::is_regular_file(p)) {
@@ -276,12 +280,12 @@ void send_regular_file(const int client_sock, fs::path p, string http_type) {
     }
 
     in_file.seekg(0, std::ios::end);
-    std::streampos position = in_file.tellg();
+    std::streampos length = in_file.tellg();
     in_file.seekg(0, std::ios::beg);
     vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-    int pass_pos = (int) position;
+    int length_int = (int) length;
     in_file.close();
-    send_http200_response(client_sock, pass_pos, fs::extension(p), buffer, string(), http_type);
+    send_http200_response(client_sock, length_int, fs::extension(p), buffer, string(), http_type);
 }
 
 /**
@@ -388,7 +392,7 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
     string ret = "";
     ret += generate_ok_header(size, http_type, content, s, ext);
 
-    int msg_size;
+    int msg_size = 0;
     if (size < 0) {
         msg_size = ret.length() + 2 + content.length();
     }
@@ -412,9 +416,9 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
         return;
     }
 
-    char entity_body[s.size() + 1];
-    std::copy(s.begin(), s.end(), entity_body);
-    memcpy((final_msg + ret.length()), entity_body, s.size());
+    char msg_body[s.size() + 1];
+    std::copy(s.begin(), s.end(), msg_body);
+    memcpy((final_msg + ret.length()), msg_body, s.size());
     cout << final_msg << endl;
     sendData(client_sock, final_msg, msg_size);
 }
