@@ -62,16 +62,16 @@ static const int BUFF_SIZE = 2048;
 string date_to_string();
 bool is_valid_request(string buff);
 void handleClient(BoundedBuffer &buff);
-string generate_index_html(fs::path dir);
 fs::path strip_root(const fs::path &p); 
 fs::path get_path(string location_str); 
+string generate_html_links(fs::path dir);
 int createSocketAndListen(const int port_num);
 void acceptConnections(const int server_sock);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
 void send_bad_request(const int client_sock, string html_type);
 void sendData(int socked_fd, const char *data, size_t data_length);
 void send_file_not_found(const int client_sock, string http_response);
-void generate_appropriate_response(const int client_sock, fs::path p, string http_type);
+void generate_response(const int client_sock, fs::path p, string http_type);
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
 
 int main(int argc, char** argv) {
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
  */
 void acceptConnections(const int server_sock) {
 	BoundedBuffer buffer(10);
-	
+
 	while (true) {
 		// Declare a socket for the client connection.
 		int sock;
@@ -164,6 +164,7 @@ void handleClient(BoundedBuffer &buffer) {
 
 	/* receive client data */
 	char buff[1024];
+	string message_buffer = "";
 	int client_request = receiveData(client_sock, buff, sizeof(buff));
 	if (client_request <= 0) {
 		cout << "no data received" << endl << endl;
@@ -173,13 +174,32 @@ void handleClient(BoundedBuffer &buffer) {
 	char *location = std::strtok(NULL, " ");
 	char *http_type = std::strtok(NULL, " ");
 
-	string cmd_str(cmd);
-	string location_str(location);
-	string http_type_str(http_type);
+	string cmd_str = "";
+	cmd_str += cmd;
 
+	string location_str = "";
+	location_str += location;
+
+	string http_type_str = "";
+	http_type_str += http_type;
+	
+	message_buffer += cmd_str;
+	message_buffer += " ";
+	message_buffer += location_str;
+	message_buffer += " ";
+	message_buffer += http_type_str;
+	
+	cout << buff << " is the current buff" << endl << endl;
+	cout << " THIS IS THE MESSAGE BUFFER " << message_buffer << endl;
+		
 	/* check if valid request */
-	if (is_valid_request(buff)) {
-		send_bad_request(client_sock, http_type);
+	if(!is_valid_request(message_buffer)) {
+	//if (!is_valid_request(buff)) {
+		cout << "bad request" << endl;
+		if (http_type_str.empty()) {
+			http_type_str.append("HTTP/1.1");
+		}
+		send_bad_request(client_sock, http_type_str);
 		close(client_sock);
 		return; 
 	}
@@ -188,11 +208,11 @@ void handleClient(BoundedBuffer &buffer) {
 
 	/* check if file exists */
 	if(!fs::exists(path_to_file)) {
-		send_file_not_found(client_sock, http_type);
+		send_file_not_found(client_sock, http_type_str);
 		close(client_sock);
 		return;
 	}
-	generate_appropriate_response(client_sock, path_to_file, http_type);
+	generate_response(client_sock, path_to_file, http_type_str);
 	close(client_sock);
 }
 
@@ -203,8 +223,17 @@ void handleClient(BoundedBuffer &buffer) {
  * @return true if valid, false if not
  */
 bool is_valid_request(string buff) {
-	std::regex get("GET /.* HTTP/.*", std::regex_constants::ECMAScript);
-	return regex_search(buff, get);
+	//std::regex get("GET /.* HTTP/.*", std::regex_constants::ECMAScript);
+	std::regex get("GET([ \t]+)/([a-zA-Z1-9_\\-\\/.]*)([ \t]+)HTTP/([0-9]+).([0-9]+)([^]*)(Host:)*([^]*)", std::regex_constants::ECMAScript);
+
+	if (regex_match(buff, get)) {
+		cout << "match" << endl;
+	}
+	else {
+		cout << "not match" << endl;
+	}	
+	return regex_match(buff, get);
+	//return regex_search(buff, get);
 }
 
 /**
@@ -214,7 +243,7 @@ bool is_valid_request(string buff) {
  * @param p Boost file system formatted path for requested content
  * @param http_type Holds the HTTP/#.# from client request
  */
-void generate_appropriate_response(const int client_sock, fs::path p, string http_type) {
+void generate_response(const int client_sock, fs::path p, string http_type) {
 	if (fs::is_directory(p)) {
 		if (fs::path_traits::empty(p)) {
 			cout << "Directory is empty" << endl;
@@ -222,13 +251,14 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 		/* check if contains index.html */
 		fs::path tmp_path = p;
 		tmp_path /= "index.html";
-		string html;
+		string html = "";
 		if (fs::exists(tmp_path)) {
-			html = tmp_path.string();
-			generate_appropriate_response(client_sock, tmp_path, http_type);
+			html += tmp_path.string();
+			//html = tmp_path.string();
+			generate_response(client_sock, tmp_path, http_type);
 		}
 		else {
-			html = generate_index_html(p);
+			html = generate_html_links(p);
 			send_http200_response(client_sock, -1, ".html", vector<char>(), html, http_type);
 		}
 	}
@@ -239,6 +269,7 @@ void generate_appropriate_response(const int client_sock, fs::path p, string htt
 		if (!in_file) {
 			cout << "Unable to open file\r\n";
 		}
+
 		in_file.seekg(0, std::ios::end);
 		std::streampos position = in_file.tellg();
 		in_file.seekg(0, std::ios::beg);
@@ -272,19 +303,26 @@ fs::path strip_root(const fs::path &p) {
  * @param boost::filesystem path for the specified directory
  * @return html code in form of C++ string
  */
-string generate_index_html(fs::path dir) {
+string generate_html_links(fs::path dir) {
 	fs::path path_no_root = strip_root(dir);
+
 	vector<fs::directory_entry> list;
 	std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
-	string ret_html("<html><head><title>Parent Directory</title></head><body>Files in directory ");
+
+	string ret_html = "";
+	ret_html += "<html><head><title>Parent Directory</title></head><body>Files: ";
+
 	ret_html.append(path_no_root.string());
 	ret_html.append("<br>");
 
 	for (fs::directory_entry d: list) {
-		string next_link("<a href=\"");
+		string next_link = "";
+		next_link += "<a href=\"";
+
+		//string next_link("<a href=\"");
 		next_link.append(d.path().filename().string());
 		next_link.append("/");
-		
+
 		next_link.append("\">");
 		next_link.append(d.path().filename().string());
 		next_link.append("/");
@@ -295,6 +333,34 @@ string generate_index_html(fs::path dir) {
 	return ret_html;
 }
 
+string sendOKHeader(int size, string http_type, string content, vector<char> s, fs::path ext) {
+	string ret = "";
+	ret += http_type;
+	ret.append(" 200 OK\r\nDate: ");
+	ret.append(date_to_string());
+	ret.append("\r\n");
+	ret.append("Content-Length: ");
+
+	try {
+		if (size < 0) {
+			ret.append(boost::lexical_cast<string>(content.length()));
+		}
+		else {
+			ret.append(boost::lexical_cast<string>(s.size()));
+		}
+	} catch (const boost::bad_lexical_cast &e) {
+		std::cerr <<e.what() << endl;
+	}
+	ret.append("\r\n");
+
+	/* add content type */
+	ret.append("Content-Type: ");
+	string extension = "";
+	extension += ext.string();
+	ret.append(extension.substr(1));
+	ret.append("\r\n\r\n");
+	return ret;
+}
 
 /**
  * Sends a http 200 OK response
@@ -307,27 +373,9 @@ string generate_index_html(fs::path dir) {
  * @param http_type A string holding the HTTP/#.# from the client request
  */
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
-	string ret;
-	ret += http_type;
-	ret.append(" 200 OK\r\nDate: ");
 
-	/* add date */
-	ret.append(date_to_string());
-	ret.append("\r\n");
-	ret.append("Content-Length: ");
-	if (size < 0) {
-		ret.append(boost::lexical_cast<string>(content.length()));
-	}
-	else {
-		ret.append(boost::lexical_cast<string>(s.size()));
-	}
-	ret.append("\r\n");
-
-	/* add content type */
-	ret.append("Content-Type: ");
-	string extension(ext.string());
-	ret.append(extension.substr(1));
-	ret.append("\r\n\r\n");
+	string ret = "";
+	ret += sendOKHeader(size, http_type, content, s, ext);
 
 	int msg_size;
 	if (size < 0) {
@@ -368,7 +416,10 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
  * the client
  */
 void send_file_not_found(const int client_sock, string http_type) {
-	string ret(http_type);
+	string ret = "";
+	ret += http_type;
+	//strcpy(ret, http_type):
+	//string ret(http_type);
 	//cout << "HTTP TYPE IN FILE NOT FOUND :::::: " << http_type << endl << endl;
 	ret.append("404 File not found\r\nConnection: close\r\nDate: ");
 
@@ -393,12 +444,14 @@ void send_file_not_found(const int client_sock, string http_type) {
 fs::path get_path(string location_str) {
 
 	char search_buff[512];
-	string folder("WWW");
+	string folder = "";
+	folder += "WWW";
+	//string folder("WWW");
 	folder += location_str;
 	folder.copy(search_buff, BUFF_SIZE);
 
 	fs::path p(folder);
-	
+
 	return p;
 }
 
@@ -410,7 +463,12 @@ fs::path get_path(string location_str) {
  * @param http_type String holding the HTTP/#.# from the client request
  */
 void send_bad_request(const int client_sock, string http_type) {
-	string ret(http_type);
+	if (http_type.empty()) {
+		http_type = "HTTP/1.1";
+	}
+	string ret = "";
+	ret += http_type;
+	//string ret(http_type);
 	ret.append("400 Bad Request\r\nConnection: close\r\nDate: ");
 	ret.append(date_to_string());
 	ret.append("\r\n");
@@ -430,7 +488,9 @@ string date_to_string() {
 	time_t curr_time = time(0);
 	char get_data[80];
 	strftime(get_data, 80, "%a, %d %b %Y %X", localtime(&curr_time));
-	string date_str(get_data);
+	string date_str = "";
+	date_str += get_data;
+	//string date_str(get_data);
 	return date_str;
 }
 
