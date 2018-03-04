@@ -78,27 +78,27 @@ void send_regular_file(const int client_sock, fs::path p, string http_type);
 
 int main(int argc, char** argv) {
 
-    /* Make sure the user called our program correctly. */
-    if (argc != 3) {
-        cout << "INCORRECT USAGE!\n";
-        cout << "usage: [port to listen on]\n"
-            << "       [directory out of which to serve files]\n";
-        exit(1);
-    }
+	/* Make sure the user called our program correctly. */
+	if (argc != 3) {
+		cout << "INCORRECT USAGE!\n";
+		cout << "usage: [port to listen on]\n"
+			<< "       [directory out of which to serve files]\n";
+		exit(1);
+	}
 
-    /* Read the port number from the first command line argument. */
-    int port = std::stoi(argv[1]);
+	/* Read the port number from the first command line argument. */
+	int port = std::stoi(argv[1]);
 
-    /* Create a socket and start listening for new connections on the
-     * specified port. */
-    int server_sock = createSocketAndListen(port);
+	/* Create a socket and start listening for new connections on the
+	 * specified port. */
+	int server_sock = createSocketAndListen(port);
 
-    /* Now let's start accepting connections. */
-    acceptConnections(server_sock);
+	/* Now let's start accepting connections. */
+	acceptConnections(server_sock);
 
-    close(server_sock);
+	close(server_sock);
 
-    return 0;
+	return 0;
 }
 
 /**
@@ -107,46 +107,46 @@ int main(int argc, char** argv) {
  * @param server_sock The socket used by the server.
  */
 void acceptConnections(const int server_sock) {
-    BoundedBuffer buffer(10);
+	BoundedBuffer buffer(10);
 
-    while (true) {
-        // Declare a socket for the client connection.
-        int sock;
+	while (true) {
+		// Declare a socket for the client connection.
+		int sock;
 
-        /*
-         * Another address structure.  This time, the system will automatically
-         * fill it in, when we accept a connection, to tell us where the
-         * connection came from.
-         */
-        struct sockaddr_in remote_addr;
-        unsigned int socklen = sizeof(remote_addr); 
+		/*
+		 * Another address structure.  This time, the system will automatically
+		 * fill it in, when we accept a connection, to tell us where the
+		 * connection came from.
+		 */
+		struct sockaddr_in remote_addr;
+		unsigned int socklen = sizeof(remote_addr); 
 
-        /*
-         * Accept the first waiting connection from the server socket and
-         * populate the address information.  The result (sock) is a socket
-         * descriptor for the conversation with the newly connected client.  If
-         * there are no pending connections in the back log, this function will
-         * block indefinitely while waiting for a client connection to be made.
-         */
-        sock = accept(server_sock, (struct sockaddr*) &remote_addr, &socklen);
-        if (sock < 0) {
-            perror("Error accepting connection");
-            exit(1);
-        }
+		/*
+		 * Accept the first waiting connection from the server socket and
+		 * populate the address information.  The result (sock) is a socket
+		 * descriptor for the conversation with the newly connected client.  If
+		 * there are no pending connections in the back log, this function will
+		 * block indefinitely while waiting for a client connection to be made.
+		 */
+		sock = accept(server_sock, (struct sockaddr*) &remote_addr, &socklen);
+		if (sock < 0) {
+			perror("Error accepting connection");
+			exit(1);
+		}
 
-        /* 
-         * Spawn a thread to run handleClient function which will handle all
-         * of the sending and receiving to/from the client.
-         */
-        thread clientThread(handleClient, std::ref(buffer));
-        clientThread.detach();
+		/* 
+		 * Spawn a thread to run handleClient function which will handle all
+		 * of the sending and receiving to/from the client.
+		 */
+		thread clientThread(handleClient, std::ref(buffer));
+		clientThread.detach();
 
-        /*
-         * Tell the OS to clean up the resources associated with that client
-         * connection, now that we're done with it.
-         */
-        buffer.putItem(sock);
-    }
+		/*
+		 * Tell the OS to clean up the resources associated with that client
+		 * connection, now that we're done with it.
+		 */
+		buffer.putItem(sock);
+	}
 }
 
 /**
@@ -159,29 +159,29 @@ void acceptConnections(const int server_sock) {
  * @param client_sock The client's socket file descriptor.
  */
 void handleClient(BoundedBuffer &buffer) {
-    int client_sock = buffer.getItem();
+	int client_sock = buffer.getItem();
 
-    /* receive client data */
-    char buff[1024];
-    int client_request = receiveData(client_sock, buff, sizeof(buff));
-    if (client_request <= 0) {
-        //cout << "no data received" << endl << endl;
-        return;
-    }
-  	
+	/* receive client data */
+	char buff[1024];
+	int client_request = receiveData(client_sock, buff, sizeof(buff));
+	if (client_request <= 0) {
+		//cout << "no data received" << endl << endl;
+		return;
+	}
+
 	/* Tokenize buff */
 	char *cmd = std::strtok(buff, " ");
-    char *location = std::strtok(NULL, " ");
-    char *http_type = std::strtok(NULL, " ");
-	
+	char *location = std::strtok(NULL, " ");
+	char *http_type = std::strtok(NULL, " ");
+
 	/* Append tokens to empty string (avoiding the std::string constructor) */
-    string cmd_str = "";
-    cmd_str += cmd;
+	string cmd_str = "";
+	cmd_str += cmd;
 
-    string location_str = "";
-    location_str += location;
+	string location_str = "";
+	location_str += location;
 
-    string http_type_str = "";
+	string http_type_str = "";
 	if (http_type == NULL) {
 		http_type_str += "HTTP/1.1";
 	}
@@ -192,28 +192,28 @@ void handleClient(BoundedBuffer &buffer) {
 	/* Create message by appending the strings together with a space between */
 	string message_buffer = "";
 	message_buffer += cmd_str;
-    message_buffer += " ";
-    message_buffer += location_str;
-    message_buffer += " ";
-    message_buffer += http_type_str;
+	message_buffer += " ";
+	message_buffer += location_str;
+	message_buffer += " ";
+	message_buffer += http_type_str;
 
-    /* check if valid request */
-    if(!is_valid_request(message_buffer)) {
-        send_bad_request(client_sock, http_type_str);
-        close(client_sock);
-        return; 
-    }
-    /* get path from request */
-    fs::path path_to_file = get_path(location_str);
+	/* check if valid request */
+	if(!is_valid_request(message_buffer)) {
+		send_bad_request(client_sock, http_type_str);
+		close(client_sock);
+		return; 
+	}
+	/* get path from request */
+	fs::path path_to_file = get_path(location_str);
 
-    /* check if file exists */
-    if(!fs::exists(path_to_file)) {
-        send_file_not_found(client_sock, http_type_str);
-        close(client_sock);
-        return;
-    }
-    generate_response(client_sock, path_to_file, http_type_str);
-    close(client_sock);
+	/* check if file exists */
+	if(!fs::exists(path_to_file)) {
+		send_file_not_found(client_sock, http_type_str);
+		close(client_sock);
+		return;
+	}
+	generate_response(client_sock, path_to_file, http_type_str);
+	close(client_sock);
 } 
 
 /**
@@ -223,8 +223,8 @@ void handleClient(BoundedBuffer &buffer) {
  * @return true if valid, false if not
  */
 bool is_valid_request(string buff) {
-    std::regex get("GET([ \t]+)/([a-zA-Z1-9_\\-\\/.]*)([ \t]+)HTTP/([0-9]+).([0-9]+)([^]*)(Host:)*([^]*)", std::regex_constants::ECMAScript);
-    return regex_match(buff, get);
+	std::regex get("GET([ \t]+)/([a-zA-Z1-9_\\-\\/.]*)([ \t]+)HTTP/([0-9]+).([0-9]+)([^]*)(Host:)*([^]*)", std::regex_constants::ECMAScript);
+	return regex_match(buff, get);
 }
 
 /**
@@ -235,24 +235,23 @@ bool is_valid_request(string buff) {
  * @param http_type Holds the HTTP/#.# from client request
  */
 void generate_response(const int client_sock, fs::path p, string http_type) {
-    if (fs::is_directory(p)) {
-        /* check if contains index.html */
-        fs::path tmp_path = p;
-        tmp_path /= "index.html";
-        string html = "";
-        if (fs::exists(tmp_path)) {
-            html += tmp_path.string();
-            generate_response(client_sock, tmp_path, http_type);
-        }
-        else { // doesn't contain index.html; generate links and send with links
-            html = generate_html_links(p);
+	if (fs::is_directory(p)) {
+		/* check if contains index.html */
+		fs::path tmp_path = p;
+		tmp_path /= "index.html";
+		string html = "";
+		if (fs::exists(tmp_path)) {
+			html += tmp_path.string();
+			generate_response(client_sock, tmp_path, http_type);
+		}
+		else { // doesn't contain index.html; generate links and send with links
+			html = generate_html_links(p);
 			send_http200_response(client_sock, -1, ".html", vector<char>(), html, http_type);
-            //send_http200_response(client_sock, 1, ".html", vector<char>(), html, http_type);
-        }
-    }
-    else if (fs::is_regular_file(p)) {
-        send_regular_file(client_sock, p, http_type); 
-    }
+		}
+	}
+	else if (fs::is_regular_file(p)) {
+		send_regular_file(client_sock, p, http_type); 
+	}
 }
 
 /**
@@ -263,20 +262,20 @@ void generate_response(const int client_sock, fs::path p, string http_type) {
  * @param http_type HTTP/#.# retrieved from client request
  */
 void send_regular_file(const int client_sock, fs::path p, string http_type) {
-    fs::path d(fs::extension(p));
+	fs::path d(fs::extension(p));
 
-    std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
-    if (!in_file) {
-        cout << "Cant open file\r\n";
-    }
+	std::ifstream in_file(p.string(), std::ios::binary|std::ios::in);
+	if (!in_file) {
+		cout << "Cant open file\r\n";
+	}
 
-    in_file.seekg(0, std::ios::end);
-    std::streampos length = in_file.tellg();
-    in_file.seekg(0, std::ios::beg);
-    vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-    int length_int = (int) length;
-    in_file.close();
-    send_http200_response(client_sock, length_int, fs::extension(p), buffer, string(), http_type);
+	in_file.seekg(0, std::ios::end);
+	std::streampos length = in_file.tellg();
+	in_file.seekg(0, std::ios::beg);
+	vector<char> buffer((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+	int length_int = (int) length;
+	in_file.close();
+	send_http200_response(client_sock, length_int, fs::extension(p), buffer, string(), http_type);
 }
 
 /**
@@ -284,13 +283,13 @@ void send_regular_file(const int client_sock, fs::path p, string http_type) {
  * &p Holds a certain path which the root must be removed
  */
 fs::path strip_root(const fs::path &p) {
-    const fs::path& parent_path = p.parent_path();
-    if(parent_path.empty() || parent_path.string() == "/") {
-        return fs::path();
-    }
-    else {
-        return strip_root(parent_path) / p.filename();
-    }
+	const fs::path& parent_path = p.parent_path();
+	if(parent_path.empty() || parent_path.string() == "/") {
+		return fs::path();
+	}
+	else {
+		return strip_root(parent_path) / p.filename();
+	}
 }
 
 /**
@@ -300,32 +299,32 @@ fs::path strip_root(const fs::path &p) {
  * @return html code in form of C++ string
  */
 string generate_html_links(fs::path dir) {
-    fs::path path_no_root = strip_root(dir);
+	fs::path path_no_root = strip_root(dir);
 
-    vector<fs::directory_entry> list;
-    std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
+	vector<fs::directory_entry> list;
+	std::copy(fs::directory_iterator(dir), fs::directory_iterator(), std::back_inserter(list));
 
-    string ret_html = "";
-    ret_html += "<html><head><title>Parent Directory</title></head><body>Files: ";
+	string ret_html = "";
+	ret_html += "<html><head><title>Parent Directory</title></head><body>Files: ";
 
-    ret_html.append(path_no_root.string());
-    ret_html.append("<br>");
+	ret_html.append(path_no_root.string());
+	ret_html.append("<br>");
 
-    for (fs::directory_entry d: list) {
-        string next_link = "";
-        next_link += "<a href=\"";
+	for (fs::directory_entry d: list) {
+		string next_link = "";
+		next_link += "<a href=\"";
 
-        next_link.append(d.path().filename().string());
-        next_link.append("/");
+		next_link.append(d.path().filename().string());
+		next_link.append("/");
 
-        next_link.append("\">");
-        next_link.append(d.path().filename().string());
-        next_link.append("/");
-        next_link.append("</a><br>");
-        ret_html.append(next_link);
-    }
-    ret_html.append("</body></html>");
-    return ret_html;
+		next_link.append("\">");
+		next_link.append(d.path().filename().string());
+		next_link.append("/");
+		next_link.append("</a><br>");
+		ret_html.append(next_link);
+	}
+	ret_html.append("</body></html>");
+	return ret_html;
 }
 
 /**
@@ -340,32 +339,32 @@ string generate_html_links(fs::path dir) {
  * 200 response
  */
 string generate_ok_header(int size, string http_type, string content, vector<char> s, fs::path ext) {
-    string ret = "";
-    ret += http_type;
-    ret.append(" 200 OK\r\nDate: ");
-    ret.append(date_to_string());
-    ret.append("\r\n");
-    ret.append("Content-Length: ");
+	string ret = "";
+	ret += http_type.substr(0,8);
+	ret.append(" 200 OK\r\nDate: ");
+	ret.append(date_to_string());
+	ret.append("\r\n");
+	ret.append("Content-Length: ");
 
-    try {
-        if (size < 0) {
-            ret.append(boost::lexical_cast<string>(content.length()));
-        }
-        else {
-            ret.append(boost::lexical_cast<string>(s.size()));
-        }
-    } catch (const boost::bad_lexical_cast &e) {
-        std::cerr <<e.what() << endl;
-    }
-    ret.append("\r\n");
+	try {
+		if (size < 0) {
+			ret.append(boost::lexical_cast<string>(content.length()));
+		}
+		else {
+			ret.append(boost::lexical_cast<string>(s.size()));
+		}
+	} catch (const boost::bad_lexical_cast &e) {
+		std::cerr <<e.what() << endl;
+	}
+	ret.append("\r\n");
 
-    /* add content type */
-    ret.append("Content-Type: ");
-    string extension = "";
-    extension += ext.string();
-    ret.append(extension.substr(1));
-    ret.append("\r\n\r\n");
-    return ret;
+	/* add content type */
+	ret.append("Content-Type: ");
+	string extension = "";
+	extension += ext.string();
+	ret.append(extension.substr(1));
+	ret.append("\r\n\r\n");
+	return ret;
 }
 
 /**
@@ -374,44 +373,36 @@ string generate_ok_header(int size, string http_type, string content, vector<cha
  * @param client_sock Represents the socket assigned to the client
  * @param size Size of the vector 
  * @param ext Extension of the file read into s
- * @param s Vector of binary contents of file read from handleClient
+ * @param s Vector of contents of file read from handleClient
  * @param content Contents of HTML file
  * @param http_type A string holding the HTTP/#.# from the client request
  */
-void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type) {
+void send_http200_response(const int client_sock, int len, fs::path ext, vector<char> s, string content, string http_type) {
+	string ret = "";
+	ret += generate_ok_header(len, http_type, content, s, ext);
 
-    string ret = "";
-    ret += generate_ok_header(size, http_type, content, s, ext);
+	int msg_size = 0;
+	msg_size = (len < 0) ? ret.length() +2+ content.length() : ret.length() +2+ len;
 
-    int msg_size = 0;
-    if (size < 0) {
-        msg_size = ret.length() + 2 + content.length();
-    }
-    else {
-        msg_size = ret.length() + 2 + size;
-    }
+	char message[ret.length() + 1];
+	strcpy(message, ret.c_str());
 
-    char message[ret.length() + 1];
-    strcpy(message, ret.c_str());
+	char final_msg[msg_size];
+	memcpy(final_msg, message, ret.length());
 
-    char final_msg[msg_size];
-    memcpy(final_msg, message, ret.length());
-
-    if (size < 0) {
-        char content_msg[content.length() + 1];
-        strcpy(content_msg, content.c_str());
-        memcpy((final_msg + ret.length()), content_msg, content.length());
-
-        //cout << "HTTP TYPE: " << final_msg << endl;
-        sendData(client_sock, final_msg, msg_size);
-        return;
-    }
-
-    char msg_body[s.size() + 1];
-    std::copy(s.begin(), s.end(), msg_body);
-    memcpy((final_msg + ret.length()), msg_body, s.size());
-    //cout << final_msg << endl;
-    sendData(client_sock, final_msg, msg_size);
+	if (len < 0) {
+		char content_msg[content.length() + 1];
+		strcpy(content_msg, content.c_str());
+		memcpy((final_msg + ret.length()), content_msg, content.length());
+		//sendData(client_sock, final_msg, msg_size);
+	}
+	else {
+		char msg_body[s.size() + 1];
+		std::copy(s.begin(), s.end(), msg_body);
+		memcpy((final_msg + ret.length()), msg_body, s.size());
+		//sendData(client_sock, final_msg, msg_size);
+	}
+	sendData(client_sock, final_msg, msg_size);
 }
 
 /**
@@ -422,18 +413,18 @@ void send_http200_response(const int client_sock, int size, fs::path ext, vector
  * the client
  */
 void send_file_not_found(const int client_sock, string http_type) {
-    string ret = "";
-    ret += http_type;
-    ret.append("404 File not found\r\nConnection: close\r\nDate: ");
+	string ret = "";
+	ret += http_type;
+	ret.append("404 File not found\r\nConnection: close\r\nDate: ");
 
-    ret.append(date_to_string());
-    ret.append("\r\n\r\n");
-    ret.append("<html><head><title>Page not found</title></head><body><404 not found></body></html>");
+	ret.append(date_to_string());
+	ret.append("\r\n\r\n");
+	ret.append("<html><head><title>Page not found</title></head><body><404 not found></body></html>");
 
-    //copy to char array and sned it
-    char msg[ret.length() + 1];
-    strcpy(msg, ret.c_str());
-    sendData(client_sock, msg, sizeof(msg));
+	//copy to char array and sned it
+	char msg[ret.length() + 1];
+	strcpy(msg, ret.c_str());
+	sendData(client_sock, msg, sizeof(msg));
 }
 
 /**
@@ -444,16 +435,15 @@ void send_file_not_found(const int client_sock, string http_type) {
  * @return p A Boost FIle System formatted path  
  */
 fs::path get_path(string location_str) {
+	char search_buff[512];
+	string folder = "";
+	folder += "WWW";
+	folder += location_str;
+	folder.copy(search_buff, BUFF_SIZE);
 
-    char search_buff[512];
-    string folder = "";
-    folder += "WWW";
-    folder += location_str;
-    folder.copy(search_buff, BUFF_SIZE);
+	fs::path p(folder);
 
-    fs::path p(folder);
-
-    return p;
+	return p;
 }
 
 
@@ -464,19 +454,19 @@ fs::path get_path(string location_str) {
  * @param http_type String holding the HTTP/#.# from the client request
  */
 void send_bad_request(const int client_sock, string http_type) {
-    if (http_type.empty()) {
-        http_type = "HTTP/1.1";
-    }
-    string ret = "";
+	if (http_type.empty()) {
+		http_type = "HTTP/1.1";
+	}
+	string ret = "";
 	ret += http_type;
-    ret.append(" 400 Bad Request\r\nConnection: close\r\nDate: ");
-    ret.append(date_to_string());
-    ret.append("\r\n");
+	ret.append(" 400 Bad Request\r\nConnection: close\r\nDate: ");
+	ret.append(date_to_string());
+	ret.append("\r\n");
 
-    char msg[ret.length() + 1];
-    strcpy(msg, ret.c_str());
-    //cout << "BAD REQUEST: " << msg << endl;
-    sendData(client_sock, msg, sizeof(msg));
+	char msg[ret.length() + 1];
+	strcpy(msg, ret.c_str());
+	//cout << "BAD REQUEST: " << msg << endl;
+	sendData(client_sock, msg, sizeof(msg));
 }
 
 /**
@@ -485,12 +475,12 @@ void send_bad_request(const int client_sock, string http_type) {
  * @return date_str the date string
  */
 string date_to_string() {
-    time_t curr_time = time(0);
-    char get_data[80];
-    strftime(get_data, 80, "%a, %d %b %Y %X", localtime(&curr_time));
-    string date_str = "";
-    date_str += get_data;
-    return date_str;
+	time_t curr_time = time(0);
+	char get_data[80];
+	strftime(get_data, 80, "%a, %d %b %Y %X", localtime(&curr_time));
+	string date_str = "";
+	date_str += get_data;
+	return date_str;
 }
 
 /**
@@ -501,75 +491,75 @@ string date_to_string() {
  * @returns The socket file descriptor
  */
 int createSocketAndListen(const int port_num) {
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
-        perror("Creating socket failed");
-        exit(1);
-    }
+	int sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Creating socket failed");
+		exit(1);
+	}
 
-    /*
-     * A server socket is bound to a port, which it will listen on for incoming
-     * connections.  By default, when a bound socket is closed, the OS waits a
-     * couple of minutes before allowing the port to be re-used.  This is
-     * inconvenient when you're developing an application, since it means that
-     * you have to wait a minute or two after you run to try things again, so
-     * we can disable the wait time by setting a socket option called
-     * SO_REUSEADDR, which tells the OS that we want to be able to immediately
-     * re-bind to that same port. See the socket(7) man page ("man 7 socket")
-     * and setsockopt(2) pages for more details about socket options.
-     */
-    int reuse_true = 1;
+	/*
+	 * A server socket is bound to a port, which it will listen on for incoming
+	 * connections.  By default, when a bound socket is closed, the OS waits a
+	 * couple of minutes before allowing the port to be re-used.  This is
+	 * inconvenient when you're developing an application, since it means that
+	 * you have to wait a minute or two after you run to try things again, so
+	 * we can disable the wait time by setting a socket option called
+	 * SO_REUSEADDR, which tells the OS that we want to be able to immediately
+	 * re-bind to that same port. See the socket(7) man page ("man 7 socket")
+	 * and setsockopt(2) pages for more details about socket options.
+	 */
+	int reuse_true = 1;
 
-    int retval; // for checking return values
+	int retval; // for checking return values
 
-    retval = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_true,
-            sizeof(reuse_true));
+	retval = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_true,
+			sizeof(reuse_true));
 
-    if (retval < 0) {
-        perror("Setting socket option failed");
-        exit(1);
-    }
+	if (retval < 0) {
+		perror("Setting socket option failed");
+		exit(1);
+	}
 
-    /*
-     * Create an address structure.  This is very similar to what we saw on the
-     * client side, only this time, we're not telling the OS where to connect,
-     * we're telling it to bind to a particular address and port to receive
-     * incoming connections.  Like the client side, we must use htons() to put
-     * the port number in network byte order.  When specifying the IP address,
-     * we use a special constant, INADDR_ANY, which tells the OS to bind to all
-     * of the system's addresses.  If your machine has multiple network
-     * interfaces, and you only wanted to accept connections from one of them,
-     * you could supply the address of the interface you wanted to use here.
-     */
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port_num);
-    addr.sin_addr.s_addr = INADDR_ANY;
+	/*
+	 * Create an address structure.  This is very similar to what we saw on the
+	 * client side, only this time, we're not telling the OS where to connect,
+	 * we're telling it to bind to a particular address and port to receive
+	 * incoming connections.  Like the client side, we must use htons() to put
+	 * the port number in network byte order.  When specifying the IP address,
+	 * we use a special constant, INADDR_ANY, which tells the OS to bind to all
+	 * of the system's addresses.  If your machine has multiple network
+	 * interfaces, and you only wanted to accept connections from one of them,
+	 * you could supply the address of the interface you wanted to use here.
+	 */
+	struct sockaddr_in addr;
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port_num);
+	addr.sin_addr.s_addr = INADDR_ANY;
 
-    /*
-     * As its name implies, this system call asks the OS to bind the socket to
-     * address and port specified above.
-     */
-    retval = bind(sock, (struct sockaddr*)&addr, sizeof(addr));
-    if (retval < 0) {
-        perror("Error binding to port");
-        exit(1);
-    }
+	/*
+	 * As its name implies, this system call asks the OS to bind the socket to
+	 * address and port specified above.
+	 */
+	retval = bind(sock, (struct sockaddr*)&addr, sizeof(addr));
+	if (retval < 0) {
+		perror("Error binding to port");
+		exit(1);
+	}
 
-    /*
-     * Now that we've bound to an address and port, we tell the OS that we're
-     * ready to start listening for client connections. This effectively
-     * activates the server socket. BACKLOG (a global constant defined above)
-     * tells the OS how much space to reserve for incoming connections that have
-     * not yet been accepted.
-     */
-    retval = listen(sock, BACKLOG);
-    if (retval < 0) {
-        perror("Error listening for connections");
-        exit(1);
-    }
+	/*
+	 * Now that we've bound to an address and port, we tell the OS that we're
+	 * ready to start listening for client connections. This effectively
+	 * activates the server socket. BACKLOG (a global constant defined above)
+	 * tells the OS how much space to reserve for incoming connections that have
+	 * not yet been accepted.
+	 */
+	retval = listen(sock, BACKLOG);
+	if (retval < 0) {
+		perror("Error listening for connections");
+		exit(1);
+	}
 
-    return sock;
+	return sock;
 }
 
 
@@ -582,15 +572,15 @@ int createSocketAndListen(const int port_num) {
  * @param data_length Number of bytes of data to send.
  */
 void sendData(int socked_fd, const char *data, size_t data_length) {
-    int num_bytes_left = data_length;
-    while (num_bytes_left > 0) {
-        int num_bytes_sent = send(socked_fd, data, data_length, 0);
-        if (num_bytes_sent == -1) {
-            std::error_code ec(errno, std::generic_category());
-            throw std::system_error(ec, "send failed");
-        }
-        num_bytes_left -= num_bytes_sent;
-    }
+	int num_bytes_left = data_length;
+	while (num_bytes_left > 0) {
+		int num_bytes_sent = send(socked_fd, data, data_length, 0);
+		if (num_bytes_sent == -1) {
+			std::error_code ec(errno, std::generic_category());
+			throw std::system_error(ec, "send failed");
+		}
+		num_bytes_left -= num_bytes_sent;
+	}
 }
 
 /**
@@ -603,11 +593,11 @@ void sendData(int socked_fd, const char *data, size_t data_length) {
  * @return The number of bytes received and written to the destination buffer.
  */
 int receiveData(int socked_fd, char *dest, size_t buff_size) {
-    int num_bytes_received = recv(socked_fd, dest, buff_size, 0);
-    if (num_bytes_received == -1) {
-        std::error_code ec(errno, std::generic_category());
-        throw std::system_error(ec, "recv failed");
-    }
+	int num_bytes_received = recv(socked_fd, dest, buff_size, 0);
+	if (num_bytes_received == -1) {
+		std::error_code ec(errno, std::generic_category());
+		throw std::system_error(ec, "recv failed");
+	}
 
-    return num_bytes_received;
+	return num_bytes_received;
 }
