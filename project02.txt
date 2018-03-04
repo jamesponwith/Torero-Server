@@ -29,7 +29,7 @@ will receive a grade of 0).
    Break this down into three categories:
 		- Time spent partner 1 spent working alone:	    22	
 		- Time spent partner 2 spent working alone:		18
-		- Time spent working together:					18
+		- Time spent working together:					22	
 
 4. A list of missing features and/or known bugs.
 
