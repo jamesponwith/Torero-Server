@@ -72,9 +72,9 @@ void send_bad_request(const int client_sock, string html_type);
 void sendData(int socked_fd, const char *data, size_t data_length);
 void send_file_not_found(const int client_sock, string http_response);
 void generate_response(const int client_sock, fs::path p, string http_type);
+void send_regular_file(const int client_sock, fs::path p, string http_type); 
 void send_http200_response(const int client_sock, int size, fs::path ext, vector<char> s, string content, string http_type);
 
-void send_regular_file(const int client_sock, fs::path p, string http_type); 
 
 int main(int argc, char** argv) {
 
@@ -165,7 +165,6 @@ void handleClient(BoundedBuffer &buffer) {
 	char buff[1024];
 	int client_request = receiveData(client_sock, buff, sizeof(buff));
 	if (client_request <= 0) {
-		//cout << "no data received" << endl << endl;
 		return;
 	}
 
@@ -394,13 +393,11 @@ void send_http200_response(const int client_sock, int len, fs::path ext, vector<
 		char content_msg[content.length() + 1];
 		strcpy(content_msg, content.c_str());
 		memcpy((final_msg + ret.length()), content_msg, content.length());
-		//sendData(client_sock, final_msg, msg_size);
 	}
 	else {
 		char msg_body[s.size() + 1];
 		std::copy(s.begin(), s.end(), msg_body);
 		memcpy((final_msg + ret.length()), msg_body, s.size());
-		//sendData(client_sock, final_msg, msg_size);
 	}
 	sendData(client_sock, final_msg, msg_size);
 }
@@ -465,7 +462,6 @@ void send_bad_request(const int client_sock, string http_type) {
 
 	char msg[ret.length() + 1];
 	strcpy(msg, ret.c_str());
-	//cout << "BAD REQUEST: " << msg << endl;
 	sendData(client_sock, msg, sizeof(msg));
 }
 
