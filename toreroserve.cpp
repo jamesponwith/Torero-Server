@@ -412,16 +412,13 @@ void send_http200_response(const int client_sock, int len, fs::path ext, vector<
 void send_file_not_found(const int client_sock, string http_type) {
 	string ret = "";
 	ret += http_type;
-	ret.append("404 File not found\r\nConnection: close\r\nDate: ");
+	ret.append("Error 404 File not found\r\nConnection: close\r\nDate: ");
 
 	ret.append(date_to_string());
 	ret.append("\r\n\r\n");
 	ret.append("<html><head><title>Page not found</title></head><body><404 not found></body></html>");
 
-	//copy to char array and sned it
-	char msg[ret.length() + 1];
-	strcpy(msg, ret.c_str());
-	sendData(client_sock, msg, sizeof(msg));
+	sendData(client_sock, ret.c_str(), ret.length()+1);
 }
 
 /**
@@ -432,14 +429,10 @@ void send_file_not_found(const int client_sock, string http_type) {
  * @return p A Boost FIle System formatted path  
  */
 fs::path get_path(string location_str) {
-	char search_buff[512];
 	string folder = "";
 	folder += "WWW";
 	folder += location_str;
-	folder.copy(search_buff, BUFF_SIZE);
-
 	fs::path p(folder);
-
 	return p;
 }
 
@@ -471,12 +464,14 @@ void send_bad_request(const int client_sock, string http_type) {
  * @return date_str the date string
  */
 string date_to_string() {
-	time_t curr_time = time(0);
-	char get_data[80];
-	strftime(get_data, 80, "%a, %d %b %Y %X", localtime(&curr_time));
-	string date_str = "";
-	date_str += get_data;
-	return date_str;
+	time_t rawtime;
+	struct tm *timeinfo;
+	char buff[80];
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	strftime(buff, sizeof(buff), "%d-%m-%Y %I:%M:%S", timeinfo);
+	string str(buff);
+	return str;
 }
 
 /**
